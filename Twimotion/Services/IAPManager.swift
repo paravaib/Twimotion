@@ -285,7 +285,16 @@ class IAPManager: ObservableObject {
             self.entitlementExpiresAt = nil
         }
         
-        // Query local entitlements without calling AppStore.sync()
+        // Check if this is a fresh install (no cached entitlement data)
+        let isFreshInstall = entitlementLastChecked == nil
+        
+        if isFreshInstall {
+            print("🆕 Fresh install detected - checking local entitlements only")
+            // Don't call AppStore.sync() to avoid Apple Sign In prompt
+            // Local entitlements will be checked below
+        }
+        
+        // Query local entitlements
         for await result in Transaction.currentEntitlements {
             do {
                 let transaction = try checkVerified(result)
@@ -320,14 +329,15 @@ class IAPManager: ObservableObject {
         }
     }
     
-    /// Restore purchases - Step 3 of safe client-only flow
+    /// Restore purchases - Only call when user explicitly requests it (will trigger Apple Sign In)
     func restorePurchases() async {
-        print("🔄 Restoring purchases...")
+        print("🔄 Restoring purchases (this will prompt for Apple Sign In)...")
         isLoading = true
         errorMessage = nil
         
         do {
-            // Call AppStore.sync() only when user explicitly requests restore
+            // Only call AppStore.sync() when user explicitly requests restore
+            // This will trigger Apple Sign In prompt
             try await AppStore.sync()
             print("✅ App Store sync successful")
             
@@ -336,6 +346,39 @@ class IAPManager: ObservableObject {
             
         } catch {
             print("⚠️ Restore purchases failed: \(error)")
+            await MainActor.run {
+                self.errorMessage = "Failed to restore purchases: \(error.localizedDescription)"
+            }
+        }
+        
+        isLoading = false
+    }
+    
+    /// Force restore purchases (for testing/debugging - will trigger Apple Sign In)
+    func forceRestorePurchases() async {
+        print("🔄 Force restoring purchases (this will prompt for Apple Sign In)...")
+        isLoading = true
+        errorMessage = nil
+        
+        // Clear all cached data first
+        await MainActor.run {
+            self.isProUser = false
+            self.entitlementExpiresAt = nil
+            self.entitlementLastChecked = nil
+            self.userDefaults.removeObject(forKey: Keys.entitlementExpiresAt)
+            self.userDefaults.removeObject(forKey: Keys.entitlementLastChecked)
+        }
+        
+        do {
+            // Force sync with App Store (will trigger Apple Sign In)
+            try await AppStore.sync()
+            print("✅ Force App Store sync successful")
+            
+            // Re-query local entitlements after sync
+            await queryLocalEntitlements()
+            
+        } catch {
+            print("⚠️ Force restore purchases failed: \(error)")
             await MainActor.run {
                 self.errorMessage = "Failed to restore purchases: \(error.localizedDescription)"
             }
@@ -365,6 +408,14 @@ class IAPManager: ObservableObject {
         // Load cached entitlement data
         entitlementExpiresAt = userDefaults.object(forKey: Keys.entitlementExpiresAt) as? Date
         entitlementLastChecked = userDefaults.object(forKey: Keys.entitlementLastChecked) as? Date
+        
+        // Check if this is a fresh install (no cached data at all)
+        let isFreshInstall = entitlementLastChecked == nil && entitlementExpiresAt == nil
+        
+        if isFreshInstall {
+            print("🆕 Fresh install detected - will sync with App Store on first launch")
+            return
+        }
         
         // Check if cached entitlement is still valid (trusted for 24 hours)
         if let lastChecked = entitlementLastChecked {

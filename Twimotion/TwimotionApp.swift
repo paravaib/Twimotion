@@ -16,6 +16,7 @@ struct TwimotionApp: App {
     @StateObject private var iapManager = IAPManager.shared
     @StateObject private var themeManager = ThemeManager()
     @StateObject private var settingsManager = SettingsManager()
+    @StateObject private var permissionManager = PermissionManager()
     
     var body: some Scene {
         WindowGroup {
@@ -23,6 +24,7 @@ struct TwimotionApp: App {
                 .environmentObject(iapManager)
                 .environmentObject(themeManager)
                 .environmentObject(settingsManager)
+                .environmentObject(permissionManager)
         }
     }
 }

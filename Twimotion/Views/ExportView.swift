@@ -16,6 +16,7 @@ struct ExportView: View {
     
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var settingsManager: SettingsManager
+    @EnvironmentObject var permissionManager: PermissionManager
     @StateObject private var gifExporter = GIFExporter()
     @StateObject private var photoSaver = PhotoSaver()
     @State private var includeWatermark = true // Always true for branding
@@ -244,8 +245,8 @@ struct ExportView: View {
                     // Calculate and display file size
                     self.calculateFileSize(url: url)
                     
-                    // Auto-save to Photos if enabled
-                    if self.settingsManager.isAutoSaveEnabled {
+                    // Auto-save to Photos if enabled and permission granted
+                    if self.settingsManager.isAutoSaveEnabled && self.permissionManager.hasPhotoLibraryPermission {
                         self.autoSaveToPhotos()
                     }
                 case .failure(let error):
@@ -287,6 +288,22 @@ struct ExportView: View {
     private func saveToPhotos() {
         guard let url = exportedGIFURL else { return }
         
+        // Check permission first
+        if !permissionManager.hasPhotoLibraryPermission {
+            // Request permission if not granted
+            Task {
+                let granted = await permissionManager.requestPhotoLibraryPermission()
+                if granted {
+                    performSaveToPhotos(url: url)
+                }
+            }
+            return
+        }
+        
+        performSaveToPhotos(url: url)
+    }
+    
+    private func performSaveToPhotos(url: URL) {
         photoSaver.saveToPhotos(gifURL: url) { result in
             switch result {
             case .success:
@@ -301,6 +318,12 @@ struct ExportView: View {
     
     private func autoSaveToPhotos() {
         guard let url = exportedGIFURL else { return }
+        
+        // Only auto-save if permission is granted
+        guard permissionManager.hasPhotoLibraryPermission else {
+            print("Auto-save skipped: Photo library permission not granted")
+            return
+        }
         
         photoSaver.autoSaveToPhotos(gifURL: url) { result in
             switch result {

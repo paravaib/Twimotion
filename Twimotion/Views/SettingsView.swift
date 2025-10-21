@@ -12,6 +12,7 @@ import Combine
 struct SettingsView: View {
     @EnvironmentObject var settingsManager: SettingsManager
     @EnvironmentObject var iapManager: IAPManager
+    @EnvironmentObject var permissionManager: PermissionManager
     @State private var showingOnboarding = false
     @State private var showingAbout = false
     @State private var showingProUpgrade = false
@@ -25,11 +26,18 @@ struct SettingsView: View {
                 // App settings
                 appSettingsSection
                 
+                // Permission settings
+                permissionSection
+                
                 // About section
                 aboutSection
-            }
-            .navigationTitle("Settings")
-            .navigationBarTitleDisplayMode(.large)
+        }
+        .navigationTitle("Settings")
+        .navigationBarTitleDisplayMode(.large)
+        .onAppear {
+            // Refresh permission status when settings view appears
+            permissionManager.refreshPermissionStatus()
+        }
             .sheet(isPresented: $showingOnboarding) {
                 OnboardingView()
             }
@@ -141,6 +149,16 @@ struct SettingsView: View {
                             }
                             
                             Button(action: {
+                                Task {
+                                    await iapManager.forceRestorePurchases()
+                                }
+                            }) {
+                                Text("Force Restore")
+                                    .font(.caption2)
+                                    .foregroundColor(.purple)
+                            }
+                            
+                            Button(action: {
                                 iapManager.resetProStatus()
                             }) {
                                 Text("Reset Status")
@@ -248,6 +266,52 @@ struct SettingsView: View {
         }
     }
     
+    // MARK: - Permission Section
+    
+    private var permissionSection: some View {
+        Section {
+            // Photo Library Permission
+            HStack {
+                Image(systemName: permissionManager.photoLibraryPermissionIcon)
+                    .foregroundColor(permissionManager.photoLibraryPermissionColor)
+                    .frame(width: 24)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Photo Library Access")
+                        .font(.headline)
+                    
+                    Text(permissionManager.photoLibraryPermissionMessage)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                if !permissionManager.hasPhotoLibraryPermission {
+                    Button(action: {
+                        Task {
+                            await permissionManager.requestPhotoLibraryPermission()
+                        }
+                    }) {
+                        Text("Grant Access")
+                            .font(.caption)
+                            .foregroundColor(.blue)
+                    }
+                } else {
+                    Button(action: {
+                        permissionManager.refreshPermissionStatus()
+                    }) {
+                        Text("Refresh")
+                            .font(.caption)
+                            .foregroundColor(.green)
+                    }
+                }
+            }
+            .padding(.vertical, 4)
+        } header: {
+            Text("Permissions")
+        }
+    }
     
     // MARK: - About Section
     
