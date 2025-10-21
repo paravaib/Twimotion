@@ -15,6 +15,9 @@ struct SettingsView: View {
     @State private var showingOnboarding = false
     @State private var showingAbout = false
     @State private var showingProUpgrade = false
+    @State private var showingPrivacyPolicy = false
+    @State private var showingTermsOfService = false
+    @State private var showingSupport = false
     
     var body: some View {
         NavigationView {
@@ -36,6 +39,15 @@ struct SettingsView: View {
             .sheet(isPresented: $showingProUpgrade) {
                 ProUpgradeView()
                     .environmentObject(iapManager)
+            }
+            .sheet(isPresented: $showingPrivacyPolicy) {
+                LegalView(title: "Privacy Policy", htmlFileName: "PrivacyPolicy")
+            }
+            .sheet(isPresented: $showingTermsOfService) {
+                LegalView(title: "Terms of Service", htmlFileName: "TermsOfService")
+            }
+            .sheet(isPresented: $showingSupport) {
+                LegalView(title: "Support & Contact", htmlFileName: "Support")
             }
         }
     }
@@ -240,17 +252,70 @@ struct SettingsView: View {
     // MARK: - About Section
     
     private var aboutSection: some View {
+        Group {
+            Section {
+                // Show onboarding
+                Button(action: {
+                    showingOnboarding = true
+                }) {
+                    HStack {
+                        Image(systemName: "questionmark.circle")
+                            .foregroundColor(.blue)
+                            .frame(width: 24)
+                        
+                        Text("How to Use")
+                        
+                        Spacer()
+                        
+                        Image(systemName: "chevron.right")
+                            .foregroundColor(.secondary)
+                            .font(.caption)
+                    }
+                }
+                .foregroundColor(.primary)
+                
+                // About app
+                Button(action: {
+                    showingAbout = true
+                }) {
+                    HStack {
+                        Image(systemName: "info.circle")
+                            .foregroundColor(.blue)
+                            .frame(width: 24)
+                        
+                        Text("About Twimotion")
+                        
+                        Spacer()
+                        
+                        Image(systemName: "chevron.right")
+                            .foregroundColor(.secondary)
+                            .font(.caption)
+                    }
+                }
+                .foregroundColor(.primary)
+            } header: {
+                Text("About")
+            }
+            
+            // Legal section
+            legalSection
+        }
+    }
+    
+    // MARK: - Legal Section
+    
+    private var legalSection: some View {
         Section {
-            // Show onboarding
+            // Privacy Policy
             Button(action: {
-                showingOnboarding = true
+                showingPrivacyPolicy = true
             }) {
                 HStack {
-                    Image(systemName: "questionmark.circle")
-                        .foregroundColor(.blue)
+                    Image(systemName: "hand.raised")
+                        .foregroundColor(.green)
                         .frame(width: 24)
                     
-                    Text("How to Use")
+                    Text("Privacy Policy")
                     
                     Spacer()
                     
@@ -261,16 +326,36 @@ struct SettingsView: View {
             }
             .foregroundColor(.primary)
             
-            // About app
+            // Terms of Service
             Button(action: {
-                showingAbout = true
+                showingTermsOfService = true
             }) {
                 HStack {
-                    Image(systemName: "info.circle")
+                    Image(systemName: "doc.text")
                         .foregroundColor(.blue)
                         .frame(width: 24)
                     
-                    Text("About Twimotion")
+                    Text("Terms of Service")
+                    
+                    Spacer()
+                    
+                    Image(systemName: "chevron.right")
+                        .foregroundColor(.secondary)
+                        .font(.caption)
+                }
+            }
+            .foregroundColor(.primary)
+            
+            // Support & Contact
+            Button(action: {
+                showingSupport = true
+            }) {
+                HStack {
+                    Image(systemName: "questionmark.circle.fill")
+                        .foregroundColor(.orange)
+                        .frame(width: 24)
+                    
+                    Text("Support & Contact")
                     
                     Spacer()
                     
@@ -281,7 +366,7 @@ struct SettingsView: View {
             }
             .foregroundColor(.primary)
         } header: {
-            Text("About")
+            Text("Legal & Support")
         }
     }
 }

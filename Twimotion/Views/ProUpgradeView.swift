@@ -73,6 +73,28 @@ struct ProUpgradeView: View {
                 .font(.subheadline)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
+            
+            // Free trial banner
+            HStack(spacing: 8) {
+                Image(systemName: "gift.fill")
+                    .foregroundColor(.green)
+                    .font(.title3)
+                
+                Text("3 Days Free Trial")
+                    .font(.headline)
+                    .fontWeight(.bold)
+                    .foregroundColor(.green)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(Color.green.opacity(0.1))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20)
+                            .stroke(Color.green.opacity(0.3), lineWidth: 1)
+                    )
+            )
         }
     }
     
@@ -85,6 +107,12 @@ struct ProUpgradeView: View {
                 .fontWeight(.bold)
             
             VStack(spacing: 16) {
+                benefitRow(
+                    icon: "gift.fill",
+                    title: "3 Days Free Trial",
+                    description: "Try Pro features completely free for 3 days, no commitment"
+                )
+                
                 benefitRow(
                     icon: "infinity",
                     title: "Unlimited GIFs",
@@ -160,7 +188,7 @@ struct ProUpgradeView: View {
                         .scaleEffect(0.9)
                 }
                 
-                Text(iapManager.isLoading ? "Processing..." : "Start Pro Subscription")
+                Text(iapManager.isLoading ? "Processing..." : "Start 3-Day Free Trial")
                     .font(.headline)
                     .fontWeight(.bold)
             }
@@ -252,15 +280,23 @@ struct ProUpgradeView: View {
                         .fontWeight(.semibold)
                     
                     if let product = product {
-                        HStack(alignment: .bottom, spacing: 4) {
-                            Text(product.displayPrice)
-                                .font(.largeTitle)
-                                .fontWeight(.bold)
-                                .foregroundColor(.primary)
+                        VStack(spacing: 4) {
+                            HStack(alignment: .bottom, spacing: 4) {
+                                Text(product.displayPrice)
+                                    .font(.largeTitle)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.primary)
+                                
+                                Text(product.subscription?.subscriptionPeriod.unit == .month ? "per month" : "per year")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                            }
                             
-                            Text(product.subscription?.subscriptionPeriod.unit == .month ? "per month" : "per year")
-                                .font(.subheadline)
+                            // Free trial text
+                            Text("After 3-day free trial")
+                                .font(.caption)
                                 .foregroundColor(.secondary)
+                                .padding(.top, 2)
                         }
                     } else {
                         Text("Loading...")
