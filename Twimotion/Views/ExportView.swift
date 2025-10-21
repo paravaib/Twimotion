@@ -17,6 +17,7 @@ struct ExportView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var settingsManager: SettingsManager
     @StateObject private var gifExporter = GIFExporter()
+    @StateObject private var photoSaver = PhotoSaver()
     @State private var includeWatermark = true // Always true for branding
     @State private var showingShareSheet = false
     @State private var exportedGIFURL: URL?
@@ -48,14 +49,8 @@ struct ExportView: View {
                 VStack(spacing: 32) {
                     Spacer()
                     
-                    // Header section
+                    // Header section - no icons
                     VStack(spacing: 16) {
-                        // Export icon
-                        Image(systemName: "square.and.arrow.down")
-                            .font(.system(size: 32, weight: .medium))
-                            .foregroundColor(.white)
-                            .padding(.bottom, 8)
-                        
                         Text("Export Your GIF")
                             .font(.title2)
                             .fontWeight(.semibold)
@@ -315,16 +310,14 @@ struct ExportView: View {
     private func saveToPhotos() {
         guard let url = exportedGIFURL else { return }
         
-        gifExporter.saveToPhotos(gifURL: url) { result in
-            DispatchQueue.main.async {
-                switch result {
-                case .success:
-                    // Auto-close the export view after successful save
-                    dismiss()
-                case .failure(let error):
-                    // Handle error
-                    print("Save to Photos failed: \(error.localizedDescription)")
-                }
+        photoSaver.saveToPhotos(gifURL: url) { result in
+            switch result {
+            case .success:
+                // Auto-close the export view after successful save
+                dismiss()
+            case .failure(let error):
+                // Handle error
+                print("Save to Photos failed: \(error.localizedDescription)")
             }
         }
     }
@@ -332,15 +325,13 @@ struct ExportView: View {
     private func autoSaveToPhotos() {
         guard let url = exportedGIFURL else { return }
         
-        gifExporter.saveToPhotos(gifURL: url) { result in
-            DispatchQueue.main.async {
-                switch result {
-                case .success:
-                    self.autoSavedToPhotos = true
-                    print("Auto-saved to Photos successfully")
-                case .failure(let error):
-                    print("Auto-save to Photos failed: \(error.localizedDescription)")
-                }
+        photoSaver.autoSaveToPhotos(gifURL: url) { result in
+            switch result {
+            case .success:
+                self.autoSavedToPhotos = true
+                print("Auto-saved to Photos successfully")
+            case .failure(let error):
+                print("Auto-save to Photos failed: \(error.localizedDescription)")
             }
         }
     }

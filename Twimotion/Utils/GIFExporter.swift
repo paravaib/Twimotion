@@ -232,7 +232,6 @@ class GIFExporter: ObservableObject {
                 
                 // Calculate ETA
                 if let startTime = self.startTime, self.frameRenderTimes.count > 0 {
-                    let elapsedTime = Date().timeIntervalSince(startTime)
                     let averageFrameTime = self.frameRenderTimes.reduce(0, +) / Double(self.frameRenderTimes.count)
                     let remainingFrames = frameCount - (frameIndex + 1)
                     self.estimatedTimeRemaining = Double(remainingFrames) * averageFrameTime

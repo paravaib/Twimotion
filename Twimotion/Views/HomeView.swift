@@ -22,6 +22,7 @@ struct HomeView: View {
     @State private var toastMessage: String = ""
     @State private var showingToast = false
     @StateObject private var gifExporter = GIFExporter()
+    @StateObject private var photoSaver = PhotoSaver()
     @State private var showingShareSheet = false
     @State private var exportedGIFURL: URL?
     @State private var previewKey: UUID = UUID() // Force preview refresh when theme changes
@@ -669,9 +670,6 @@ struct HomeView: View {
     private var exportSection: some View {
         VStack(alignment: .leading, spacing: 20) {
             HStack {
-                Image(systemName: "square.and.arrow.down")
-                    .foregroundColor(.green)
-                    .font(.title3)
                 Text("Export Your GIF")
                     .font(.headline)
                     .fontWeight(.semibold)
@@ -689,10 +687,6 @@ struct HomeView: View {
                             ProgressView()
                                 .progressViewStyle(CircularProgressViewStyle(tint: .white))
                                 .scaleEffect(0.9)
-                        } else {
-                            Image(systemName: "square.and.arrow.down")
-                                .font(.title2)
-                                .fontWeight(.semibold)
                         }
                         
                         VStack(alignment: .leading, spacing: 2) {
@@ -706,12 +700,6 @@ struct HomeView: View {
                         }
                         
                         Spacer()
-                        
-                        if !gifExporter.isExporting {
-                            Image(systemName: "arrow.right")
-                                .font(.title3)
-                                .fontWeight(.semibold)
-                        }
                     }
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
@@ -1119,14 +1107,12 @@ struct HomeView: View {
     private func saveToPhotos() {
         guard let gifURL = exportedGIFURL else { return }
         
-        gifExporter.saveToPhotos(gifURL: gifURL) { result in
-            DispatchQueue.main.async {
-                switch result {
-                case .success:
-                    self.showToast("GIF saved to Photos!")
-                case .failure(let error):
-                    self.showToast("Failed to save to Photos: \(error.localizedDescription)")
-                }
+        photoSaver.saveToPhotos(gifURL: gifURL) { result in
+            switch result {
+            case .success:
+                self.showToast("GIF saved to Photos!")
+            case .failure(let error):
+                self.showToast("Failed to save to Photos: \(error.localizedDescription)")
             }
         }
     }
@@ -1134,332 +1120,22 @@ struct HomeView: View {
     private func autoSaveToPhotos() {
         guard let gifURL = exportedGIFURL else { return }
         
-        gifExporter.saveToPhotos(gifURL: gifURL) { result in
-            DispatchQueue.main.async {
-                switch result {
-                case .success:
-                    self.autoSavedToPhotos = true
-                    self.showToast("Auto-saved to Photos successfully!")
-                    print("Auto-saved to Photos successfully")
-                case .failure(let error):
-                    self.showToast("Auto-save failed: \(error.localizedDescription)")
-                    print("Auto-save to Photos failed: \(error.localizedDescription)")
-                }
+        photoSaver.autoSaveToPhotos(gifURL: gifURL) { result in
+            switch result {
+            case .success:
+                self.autoSavedToPhotos = true
+                self.showToast("Auto-saved to Photos successfully!")
+                print("Auto-saved to Photos successfully")
+            case .failure(let error):
+                self.showToast("Auto-save failed: \(error.localizedDescription)")
+                print("Auto-save to Photos failed: \(error.localizedDescription)")
             }
         }
     }
 }
 
-// MARK: - Onboarding View
 
-struct OnboardingView: View {
-    @Environment(\.dismiss) private var dismiss
-    
-    var body: some View {
-        NavigationView {
-            VStack(spacing: 32) {
-                Spacer()
-                
-                // Onboarding content
-                VStack(spacing: 24) {
-                    Image(systemName: "text.bubble.fill")
-                        .font(.system(size: 80))
-                        .foregroundColor(.blue)
-                    
-                    Text("Welcome to Twimotion")
-                        .font(.largeTitle)
-                        .fontWeight(.bold)
-                    
-                    VStack(spacing: 16) {
-                        onboardingStep(
-                            icon: "doc.text",
-                            title: "Paste",
-                            description: "Enter or paste your text"
-                        )
-                        
-                        onboardingStep(
-                            icon: "play.rectangle",
-                            title: "Preview",
-                            description: "Watch your animation come to life"
-                        )
-                        
-                        onboardingStep(
-                            icon: "square.and.arrow.up",
-                            title: "Export",
-                            description: "Save and share your animated GIF"
-                        )
-                    }
-                }
-                
-                Spacer()
-                
-                Button(action: {
-                    UserDefaults.standard.set(true, forKey: "hasSeenOnboarding")
-                    dismiss()
-                }) {
-                    Text("Get Started")
-                        .font(.headline)
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 50)
-                        .background(Color.blue)
-                        .cornerRadius(12)
-                }
-                .padding(.horizontal, 20)
-            }
-            .padding()
-            .navigationBarTitleDisplayMode(.inline)
-            .navigationBarItems(trailing: Button("Skip") { dismiss() })
-        }
-    }
-    
-    private func onboardingStep(icon: String, title: String, description: String) -> some View {
-        HStack(spacing: 16) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundColor(.blue)
-                .frame(width: 30)
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.headline)
-                Text(description)
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-            }
-            
-            Spacer()
-        }
-    }
-}
 
-// MARK: - Full Screen Preview View
-
-struct FullScreenPreviewView: View {
-    let phrases: [String]
-    let preset: AnimationPreset
-    let duration: Double
-    let speedMultiplier: Double
-    
-    @Environment(\.dismiss) private var dismiss
-    @State private var currentTime: Double = 0.0
-    @State private var isPlaying: Bool = false
-    @State private var timer: Timer?
-    @State private var animationKey: UUID = UUID() // Force view refresh when speed changes
-    
-    var body: some View {
-        ZStack {
-            // Background
-            Color.black
-                .ignoresSafeArea()
-            
-            VStack(spacing: 0) {
-                // Header with close button
-                HStack {
-                    Button(action: {
-                        dismiss()
-                    }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.title2)
-                            .foregroundColor(.white)
-                            .background(Circle().fill(Color.black.opacity(0.5)))
-                    }
-                    
-                    Spacer()
-                    
-                    Text("Preview")
-                        .font(.headline)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.white)
-                    
-                    Spacer()
-                    
-                    // Placeholder for symmetry
-                    Color.clear
-                        .frame(width: 32, height: 32)
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 10)
-                
-                Spacer()
-                
-                // Full screen animation
-                AnimatedSlideView(
-                    phrases: phrases,
-                    preset: preset,
-                    t: currentTime,
-                    size: CGSize(width: UIScreen.main.bounds.width - 40, height: UIScreen.main.bounds.width - 40),
-                    speedMultiplier: speedMultiplier
-                )
-                .background(
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(Color.black.opacity(0.8))
-                        .shadow(color: .black.opacity(0.5), radius: 20, x: 0, y: 10)
-                )
-                .cornerRadius(20)
-                
-                Spacer()
-                
-                // Full screen controls
-                fullScreenControls
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 40)
-            }
-        }
-        .onAppear {
-            resetAnimation()
-            // Auto-play in full screen
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                startAnimation()
-            }
-        }
-        .onDisappear {
-            stopAnimation()
-        }
-        .onChange(of: duration) { oldDuration, newDuration in
-            // Restart animation when duration changes
-            animationKey = UUID() // Force view refresh
-            if isPlaying {
-                pauseAnimation()
-                resetAnimation()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    startAnimation()
-                }
-            }
-        }
-        .id(animationKey) // Force view refresh when animationKey changes
-    }
-    
-    // MARK: - Full Screen Controls
-    
-    private var fullScreenControls: some View {
-        VStack(spacing: 20) {
-            // Progress bar
-            VStack(spacing: 8) {
-                Slider(
-                    value: $currentTime,
-                    in: 0...1.0,
-                    onEditingChanged: { editing in
-                        if editing {
-                            pauseAnimation()
-                        }
-                    }
-                )
-                .accentColor(.white)
-                
-                // Duration display
-                HStack {
-                    Text(timeString(from: currentTime * duration))
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.white)
-                    
-                    Spacer()
-                    
-                    Text(timeString(from: duration))
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.white)
-                }
-            }
-            
-            // Control buttons
-            HStack(spacing: 40) {
-                // Reset button
-                Button(action: resetAnimation) {
-                    Image(systemName: "arrow.clockwise.circle.fill")
-                        .font(.title)
-                        .foregroundColor(.white)
-                        .background(Circle().fill(Color.black.opacity(0.5)))
-                }
-                
-                // Play/Pause button
-                Button(action: togglePlayback) {
-                    Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                        .font(.system(size: 60))
-                        .foregroundColor(.white)
-                        .background(Circle().fill(Color.black.opacity(0.5)))
-                }
-                
-                // Close button
-                Button(action: {
-                    dismiss()
-                }) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title)
-                        .foregroundColor(.white)
-                        .background(Circle().fill(Color.black.opacity(0.5)))
-                }
-            }
-        }
-    }
-    
-    // MARK: - Animation Control Methods
-    
-    private func togglePlayback() {
-        if isPlaying {
-            pauseAnimation()
-        } else {
-            startAnimation()
-        }
-    }
-    
-    private func startAnimation() {
-        guard !isPlaying else { return }
-        
-        isPlaying = true
-        let frameIncrement = 1.0/60.0 / duration
-        
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0/60.0, repeats: true) { timer in
-            DispatchQueue.main.async {
-                guard isPlaying else {
-                    timer.invalidate()
-                    return
-                }
-                
-                currentTime += frameIncrement
-                
-                if currentTime >= 1.0 {
-                    currentTime = 1.0
-                    pauseAnimation()
-                }
-            }
-        }
-    }
-    
-    private func pauseAnimation() {
-        isPlaying = false
-        timer?.invalidate()
-        timer = nil
-    }
-    
-    private func stopAnimation() {
-        pauseAnimation()
-    }
-    
-    private func resetAnimation() {
-        pauseAnimation()
-        currentTime = 0.0
-    }
-    
-    private func timeString(from seconds: TimeInterval) -> String {
-        let minutes = Int(seconds) / 60
-        let remainingSeconds = Int(seconds) % 60
-        return String(format: "%d:%02d", minutes, remainingSeconds)
-    }
-}
-
-// MARK: - Share Sheet
-
-struct ShareSheet: UIViewControllerRepresentable {
-    let activityItems: [Any]
-    
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
-    }
-    
-    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
-}
 
 #Preview {
     HomeView()
