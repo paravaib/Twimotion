@@ -10,6 +10,7 @@ import Combine
 
 /// Settings view with app configuration and premium features
 struct SettingsView: View {
+    @EnvironmentObject var settingsManager: SettingsManager
     @State private var showingOnboarding = false
     @State private var showingAbout = false
     
@@ -48,7 +49,7 @@ struct SettingsView: View {
                 
                 Spacer()
                 
-                Toggle("", isOn: .constant(true))
+                Toggle("", isOn: $settingsManager.autoSaveToPhotos)
                     .labelsHidden()
             }
         } header: {

@@ -14,12 +14,14 @@ struct TwimotionApp: App {
     
     @StateObject private var iapManager = IAPManager.shared
     @StateObject private var themeManager = ThemeManager()
+    @StateObject private var settingsManager = SettingsManager()
     
     var body: some Scene {
         WindowGroup {
             MainAppView()
                 .environmentObject(iapManager)
                 .environmentObject(themeManager)
+                .environmentObject(settingsManager)
         }
     }
 }

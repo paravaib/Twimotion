@@ -15,12 +15,14 @@ struct ExportView: View {
     let speedMultiplier: Double
     
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var settingsManager: SettingsManager
     @StateObject private var gifExporter = GIFExporter()
     @State private var includeWatermark = true // Always true for branding
     @State private var showingShareSheet = false
     @State private var exportedGIFURL: URL?
     @State private var exportCompleted = false
     @State private var exportedFileSize: String = ""
+    @State private var autoSavedToPhotos = false
     
     private var exportConfig: GIFExporter.ExportConfiguration {
         let dynamicDuration = DeterministicAnimationEngine.calculateGIFDuration(for: phrases, speedMultiplier: speedMultiplier)
@@ -49,6 +51,11 @@ struct ExportView: View {
                     // Results section
                     if exportCompleted {
                         resultsSection
+                        
+                        // Auto-save status
+                        if settingsManager.isAutoSaveEnabled {
+                            autoSaveStatusSection
+                        }
                     }
                 }
                 .padding(.horizontal, 20)
@@ -297,6 +304,33 @@ struct ExportView: View {
         .cornerRadius(16)
     }
     
+    // MARK: - Auto-save Status Section
+    
+    private var autoSaveStatusSection: some View {
+        VStack(spacing: 12) {
+            HStack {
+                Image(systemName: autoSavedToPhotos ? "checkmark.circle.fill" : "clock.circle.fill")
+                    .foregroundColor(autoSavedToPhotos ? .green : .orange)
+                    .font(.title2)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(autoSavedToPhotos ? "Saved to Photos" : "Saving to Photos...")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                    
+                    Text(autoSavedToPhotos ? "Your GIF has been automatically saved to your Photos library" : "Please wait while we save your GIF to Photos")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+            }
+        }
+        .padding()
+        .background(autoSavedToPhotos ? Color.green.opacity(0.1) : Color.orange.opacity(0.1))
+        .cornerRadius(12)
+    }
+    
     // MARK: - Helper Methods
     
     private func startExport() {
@@ -316,6 +350,11 @@ struct ExportView: View {
                     
                     // Calculate and display file size
                     self.calculateFileSize(url: url)
+                    
+                    // Auto-save to Photos if enabled
+                    if self.settingsManager.isAutoSaveEnabled {
+                        self.autoSaveToPhotos()
+                    }
                 case .failure(let error):
                     print("GIF export failed: \(error.localizedDescription)")
                     print("Error details: \(error)")
@@ -364,6 +403,22 @@ struct ExportView: View {
                 case .failure(let error):
                     // Handle error
                     print("Save to Photos failed: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+    
+    private func autoSaveToPhotos() {
+        guard let url = exportedGIFURL else { return }
+        
+        gifExporter.saveToPhotos(gifURL: url) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success:
+                    self.autoSavedToPhotos = true
+                    print("Auto-saved to Photos successfully")
+                case .failure(let error):
+                    print("Auto-save to Photos failed: \(error.localizedDescription)")
                 }
             }
         }
