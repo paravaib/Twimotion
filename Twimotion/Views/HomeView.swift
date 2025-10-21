@@ -97,11 +97,8 @@ struct HomeView: View {
                     // Text input section
                     textInputSection
                     
-                    // Character counter and preview
+                    // Animation preview
                     if !inputText.isEmpty {
-                        inputAnalysisSection
-                        
-                        // Animation preview
                         animationPreviewSection
                     }
                     
@@ -587,42 +584,6 @@ struct HomeView: View {
         }
     }
     
-    // MARK: - Input Analysis Section
-    
-    private var inputAnalysisSection: some View {
-        VStack(spacing: 12) {
-            if let preview = splitPreview {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Analysis")
-                            .font(.headline)
-                        
-                        Text(preview.description)
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    Spacer()
-                    
-                    // Status indicator
-                    Circle()
-                        .fill(preview.isOptimal ? .green : .orange)
-                        .frame(width: 12, height: 12)
-                }
-                .padding()
-                .background(Color(.systemGray6))
-                .cornerRadius(12)
-            }
-            
-            // Word counter
-            HStack {
-                Spacer()
-                Text("\(TextSplitter.split(inputText).count) words")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-        }
-    }
     
     
     // MARK: - Animation Preview Section

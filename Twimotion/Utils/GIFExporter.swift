@@ -107,6 +107,12 @@ class GIFExporter: ObservableObject {
         
         DispatchQueue.main.async {
             self.isExporting = true
+            self.exportProgress = 0.0
+            self.currentFrame = 0
+            self.totalFrames = 0
+            self.estimatedTimeRemaining = 0
+            self.startTime = nil
+            self.frameRenderTimes = []
         }
         
         do {
@@ -161,6 +167,14 @@ class GIFExporter: ObservableObject {
     private func createGIFDirectly(config: GIFExporter.ExportConfiguration, outputURL: URL, frameCount: Int, frameInterval: Double) throws {
         print("GIFExporter: Creating GIF directly with \(frameCount) frames")
         
+        // Initialize progress tracking
+        DispatchQueue.main.async {
+            self.totalFrames = frameCount
+            self.currentFrame = 0
+            self.startTime = Date()
+            self.frameRenderTimes = []
+        }
+        
         // Create GIF properties
         let gifProperties = [
             kCGImagePropertyGIFDictionary: [
@@ -179,6 +193,7 @@ class GIFExporter: ObservableObject {
         
         // Add frames one by one to avoid memory issues
         for frameIndex in 0..<frameCount {
+            let frameStartTime = Date()
             let t = Double(frameIndex) / Double(frameCount - 1)
             
             // Create pixel buffer for this frame
@@ -198,10 +213,30 @@ class GIFExporter: ObservableObject {
             
             CGImageDestinationAddImage(destination, cgImage, frameProperties as CFDictionary)
             
-            // Update progress
+            // Calculate frame render time
+            let frameRenderTime = Date().timeIntervalSince(frameStartTime)
+            
+            // Update progress and ETA
             let progress = Double(frameIndex + 1) / Double(frameCount)
             DispatchQueue.main.async {
                 self.exportProgress = progress
+                self.currentFrame = frameIndex + 1
+                
+                // Track frame render times for ETA calculation
+                self.frameRenderTimes.append(frameRenderTime)
+                
+                // Keep only last 10 frame times for better ETA accuracy
+                if self.frameRenderTimes.count > 10 {
+                    self.frameRenderTimes.removeFirst()
+                }
+                
+                // Calculate ETA
+                if let startTime = self.startTime, self.frameRenderTimes.count > 0 {
+                    let elapsedTime = Date().timeIntervalSince(startTime)
+                    let averageFrameTime = self.frameRenderTimes.reduce(0, +) / Double(self.frameRenderTimes.count)
+                    let remainingFrames = frameCount - (frameIndex + 1)
+                    self.estimatedTimeRemaining = Double(remainingFrames) * averageFrameTime
+                }
             }
             
             // Log progress for long exports

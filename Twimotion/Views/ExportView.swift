@@ -40,15 +40,41 @@ struct ExportView: View {
     
     var body: some View {
         NavigationView {
-            ScrollView {
-                VStack(spacing: 24) {
-                    // Export settings
-                    exportSettingsSection
+            ZStack {
+                // Dark background
+                Color.black
+                    .ignoresSafeArea()
+                
+                VStack(spacing: 32) {
+                    Spacer()
                     
-                    // Export button and progress
-                    exportSection
+                    // Header section
+                    VStack(spacing: 16) {
+                        // Export icon
+                        Image(systemName: "square.and.arrow.down")
+                            .font(.system(size: 32, weight: .medium))
+                            .foregroundColor(.white)
+                            .padding(.bottom, 8)
+                        
+                        Text("Export Your GIF")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.white)
+                    }
                     
-                    // Results section
+                    Spacer()
+                    
+                    // Main export button
+                    exportButton
+                    
+                    Spacer()
+                    
+                    // Progress view (when exporting)
+                    if gifExporter.isExporting {
+                        progressView
+                    }
+                    
+                    // Results section (when completed)
                     if exportCompleted {
                         resultsSection
                         
@@ -57,15 +83,17 @@ struct ExportView: View {
                             autoSaveStatusSection
                         }
                     }
+                    
+                    Spacer()
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 20)
+                .padding(.horizontal, 24)
             }
-            .navigationTitle("Export GIF")
-            .navigationBarTitleDisplayMode(.inline)
-            .navigationBarItems(leading: Button("Back") {
-                // Handle back navigation
-            })
+            .navigationTitle("")
+            .navigationBarHidden(true)
+            .onTapGesture {
+                // Dismiss keyboard when tapping outside
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            }
             .sheet(isPresented: $showingShareSheet) {
                 if let url = exportedGIFURL {
                     ShareSheet(activityItems: [url])
@@ -75,260 +103,153 @@ struct ExportView: View {
     }
     
     
-    // MARK: - Export Settings Section
     
-    private var exportSettingsSection: some View {
-        VStack(spacing: 20) {
-            // Export info
-            VStack(spacing: 12) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Export Settings")
-                            .font(.headline)
-                        
-                        Text("\(Int(DeterministicAnimationEngine.calculateGIFDuration(for: phrases, speedMultiplier: speedMultiplier))) seconds • \(phrases.count) words")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    Spacer()
-                    
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(.green)
-                        .font(.title2)
-                }
+    
+    
+    
+    // MARK: - Export Button
+    
+    private var exportButton: some View {
+        Button(action: startExport) {
+            VStack(spacing: 4) {
+                Text(gifExporter.isExporting ? "Exporting..." : "Export GIF")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(.white)
                 
-                // GIF specifications
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("X Platform Optimized")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                        
-                        Text("1080×1080 • Perfect for X platform uploads")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    Spacer()
-                }
+                Text("Save and share your creation.")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.white.opacity(0.8))
             }
-            .padding()
-            .background(Color(.systemGray6))
-            .cornerRadius(12)
-            
-            // Watermark toggle
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Include Watermark")
-                        .font(.subheadline)
-                    
-                    Text("Branding watermark (always included)")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                
-                Spacer()
-                
-                Toggle("", isOn: $includeWatermark)
-                    .labelsHidden()
-                    .disabled(true) // Always include watermark for branding
-            }
-            .padding()
-            .background(Color(.systemGray6))
-            .cornerRadius(12)
-            
-        }
-    }
-    
-    
-    
-    
-    // MARK: - Export Section
-    
-    private var exportSection: some View {
-        VStack(spacing: 16) {
-            // Export button
-            Button(action: startExport) {
-                HStack(spacing: 12) {
-                    if gifExporter.isExporting {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                            .scaleEffect(0.8)
-                    } else {
-                        Image(systemName: "square.and.arrow.down")
-                            .font(.title3)
-                    }
-                    
-                    Text(gifExporter.isExporting ? "Exporting..." : "Export GIF")
-                        .font(.headline)
-                        .fontWeight(.semibold)
-                }
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .frame(height: 56)
-                .background(
+            .padding(.horizontal, 24)
+            .padding(.vertical, 20)
+            .frame(maxWidth: .infinity)
+            .background(
+                ZStack {
+                    // Main gradient
                     LinearGradient(
-                        gradient: Gradient(colors: gifExporter.isExporting ? [Color.gray, Color.gray.opacity(0.8)] : [Color.blue, Color.purple]),
+                        gradient: Gradient(colors: [
+                            Color(red: 0.2, green: 1.0, blue: 0.2), // Lime green
+                            Color(red: 0.0, green: 0.5, blue: 1.0)  // Blue
+                        ]),
                         startPoint: .leading,
                         endPoint: .trailing
                     )
-                )
-                .cornerRadius(16)
-                .shadow(color: gifExporter.isExporting ? Color.clear : Color.blue.opacity(0.3), radius: 8, x: 0, y: 4)
-            }
-            .disabled(gifExporter.isExporting)
+                    .cornerRadius(20)
+                    
+                    // Glow effect
+                    if !gifExporter.isExporting {
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                Color(red: 0.2, green: 1.0, blue: 0.2).opacity(0.3),
+                                Color(red: 0.0, green: 0.5, blue: 1.0).opacity(0.1)
+                            ]),
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                        .blur(radius: 20)
+                        .offset(x: -10, y: 5)
+                    }
+                }
+            )
             .scaleEffect(gifExporter.isExporting ? 0.98 : 1.0)
             .animation(.easeInOut(duration: 0.2), value: gifExporter.isExporting)
-            
-            // Progress view
-            if gifExporter.isExporting {
-                progressView
-            }
         }
+        .disabled(gifExporter.isExporting)
     }
     
     private var progressView: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 16) {
             // Progress bar
             ProgressView(value: gifExporter.exportProgress)
-                .progressViewStyle(LinearProgressViewStyle())
+                .progressViewStyle(LinearProgressViewStyle(tint: Color(red: 0.2, green: 1.0, blue: 0.2)))
+                .scaleEffect(y: 2)
             
-            // Progress details
-            VStack(spacing: 8) {
-                HStack {
-                    Text("Frame \(gifExporter.currentFrame) of \(gifExporter.totalFrames)")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    Spacer()
-                    
-                    if gifExporter.estimatedTimeRemaining > 0 {
-                        Text("ETA: \(timeString(from: gifExporter.estimatedTimeRemaining))")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
+            // Progress text with ETA
+            VStack(spacing: 4) {
+                Text("Exporting GIF...")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.white.opacity(0.8))
                 
-                // File size info
-                if !exportedFileSize.isEmpty {
-                    HStack {
-                        Text("GIF Size: \(exportedFileSize)")
-                            .font(.caption)
-                            .foregroundColor(.blue)
-                            .fontWeight(.medium)
-                        
-                        Spacer()
-                        
-                        Text("1080×1080")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
+                if gifExporter.estimatedTimeRemaining > 0 {
+                    Text("ETA: \(timeString(from: gifExporter.estimatedTimeRemaining))")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.white.opacity(0.6))
                 }
             }
         }
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
+        .padding(.horizontal, 24)
     }
     
     // MARK: - Results Section
     
     private var resultsSection: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 20) {
             // Success message
-            VStack(spacing: 12) {
-                HStack {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(.green)
-                        .font(.title2)
-                    
-                    Text("Export Complete!")
-                        .font(.headline)
-                        .foregroundColor(.green)
-                    
-                    Spacer()
-                }
+            VStack(spacing: 8) {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundColor(Color(red: 0.2, green: 1.0, blue: 0.2))
+                    .font(.system(size: 32))
                 
-                // File size info
+                Text("Export Complete!")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(.white)
+                
                 if !exportedFileSize.isEmpty {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("GIF Details")
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                            
-                            Text("Size: \(exportedFileSize) • Resolution: 1080×1080")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        Spacer()
-                    }
+                    Text("Size: \(exportedFileSize) • 1080×1080")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.white.opacity(0.7))
                 }
             }
             
             // Action buttons
-            HStack(spacing: 12) {
+            HStack(spacing: 16) {
                 Button(action: {
                     showingShareSheet = true
                 }) {
-                    HStack {
+                    HStack(spacing: 8) {
                         Image(systemName: "square.and.arrow.up")
                         Text("Share")
                     }
-                    .font(.subheadline)
-                    .foregroundColor(.blue)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 44)
-                    .background(Color.blue.opacity(0.1))
-                    .cornerRadius(12)
+                    .frame(height: 50)
+                    .background(Color.blue)
+                    .cornerRadius(16)
                 }
                 
                 Button(action: saveToPhotos) {
-                    HStack {
+                    HStack(spacing: 8) {
                         Image(systemName: "photo")
                         Text("Save to Photos")
                     }
-                    .font(.subheadline)
+                    .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 44)
-                    .background(Color.green)
-                    .cornerRadius(12)
+                    .frame(height: 50)
+                    .background(Color(red: 0.2, green: 1.0, blue: 0.2))
+                    .cornerRadius(16)
                 }
             }
         }
-        .padding()
-        .background(Color.green.opacity(0.1))
-        .cornerRadius(16)
+        .padding(.horizontal, 24)
     }
     
     // MARK: - Auto-save Status Section
     
     private var autoSaveStatusSection: some View {
-        VStack(spacing: 12) {
-            HStack {
-                Image(systemName: autoSavedToPhotos ? "checkmark.circle.fill" : "clock.circle.fill")
-                    .foregroundColor(autoSavedToPhotos ? .green : .orange)
-                    .font(.title2)
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(autoSavedToPhotos ? "Saved to Photos" : "Saving to Photos...")
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                    
-                    Text(autoSavedToPhotos ? "Your GIF has been automatically saved to your Photos library" : "Please wait while we save your GIF to Photos")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                
-                Spacer()
-            }
+        HStack(spacing: 12) {
+            Image(systemName: autoSavedToPhotos ? "checkmark.circle.fill" : "clock.circle.fill")
+                .foregroundColor(autoSavedToPhotos ? Color(red: 0.2, green: 1.0, blue: 0.2) : .orange)
+                .font(.system(size: 20))
+            
+            Text(autoSavedToPhotos ? "Saved to Photos" : "Saving to Photos...")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.white.opacity(0.8))
+            
+            Spacer()
         }
-        .padding()
-        .background(autoSavedToPhotos ? Color.green.opacity(0.1) : Color.orange.opacity(0.1))
-        .cornerRadius(12)
+        .padding(.horizontal, 24)
     }
     
     // MARK: - Helper Methods
