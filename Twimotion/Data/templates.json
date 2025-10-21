@@ -1,0 +1,12 @@
+[
+  {
+    "id": "typewriter",
+    "name": "Classic Typewriter",
+    "backgroundAsset": "typewriter_bg.png",
+    "defaultDuration": 10.0,
+    "defaultFPS": 30,
+    "tokens": { "bg": "#000000", "primary": "#FFFFFF" },
+    "placeholder": { "role":"headline", "font":"Inter-Bold", "fontSize":48, "maxLines":10, "safeInset":40 },
+    "animation": { "family":"typewriter", "minDuration":3.0, "maxDuration":30.0 }
+  }
+]
