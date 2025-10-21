@@ -13,6 +13,7 @@ import Combine
 struct HomeView: View {
     @EnvironmentObject var iapManager: IAPManager
     @EnvironmentObject var themeManager: ThemeManager
+    @EnvironmentObject var settingsManager: SettingsManager
     @State private var inputText: String = ""
     @State private var splitPreview: SplitPreview?
     @State private var showingOnboarding = false
@@ -24,6 +25,7 @@ struct HomeView: View {
     @State private var showingShareSheet = false
     @State private var exportedGIFURL: URL?
     @State private var previewKey: UUID = UUID() // Force preview refresh when theme changes
+    @State private var autoSavedToPhotos = false
     
     
     // Text length limits for optimal performance
@@ -943,6 +945,22 @@ struct HomeView: View {
                             
                             Spacer()
                         }
+                        
+                        // Auto-save status indicator
+                        if settingsManager.isAutoSaveEnabled {
+                            HStack {
+                                Image(systemName: autoSavedToPhotos ? "checkmark.circle.fill" : "clock.circle.fill")
+                                    .foregroundColor(autoSavedToPhotos ? .green : .orange)
+                                    .font(.subheadline)
+                                
+                                Text(autoSavedToPhotos ? "Auto-saved to Photos" : "Auto-saving to Photos...")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                
+                                Spacer()
+                            }
+                            .padding(.top, 8)
+                        }
                     }
                     .padding(20)
                     .background(
@@ -1120,6 +1138,15 @@ struct HomeView: View {
                 case .success(let url):
                     self.exportedGIFURL = url
                     self.showToast("GIF exported successfully! Ready to share.")
+                    
+                    // Auto-save to Photos if enabled
+                    print("DEBUG: Auto-save enabled: \(self.settingsManager.isAutoSaveEnabled)")
+                    if self.settingsManager.isAutoSaveEnabled {
+                        print("DEBUG: Starting auto-save to Photos...")
+                        self.autoSaveToPhotos()
+                    } else {
+                        print("DEBUG: Auto-save is disabled, skipping auto-save")
+                    }
                 case .failure(let error):
                     self.showToast("Export failed: \(error.localizedDescription)")
                     print("Export error: \(error)")
@@ -1138,6 +1165,24 @@ struct HomeView: View {
                     self.showToast("GIF saved to Photos!")
                 case .failure(let error):
                     self.showToast("Failed to save to Photos: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+    
+    private func autoSaveToPhotos() {
+        guard let gifURL = exportedGIFURL else { return }
+        
+        gifExporter.saveToPhotos(gifURL: gifURL) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success:
+                    self.autoSavedToPhotos = true
+                    self.showToast("Auto-saved to Photos successfully!")
+                    print("Auto-saved to Photos successfully")
+                case .failure(let error):
+                    self.showToast("Auto-save failed: \(error.localizedDescription)")
+                    print("Auto-save to Photos failed: \(error.localizedDescription)")
                 }
             }
         }
