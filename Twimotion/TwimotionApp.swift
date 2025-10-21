@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Combine
 
 @main
 struct TwimotionApp: App {
@@ -51,5 +52,11 @@ struct MainAppView: View {
                 .tag(1)
         }
         .accentColor(.blue)
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            // Handle app foreground events for entitlement checking
+            Task {
+                await iapManager.handleAppForeground()
+            }
+        }
     }
 }

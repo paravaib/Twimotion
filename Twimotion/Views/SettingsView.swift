@@ -112,7 +112,7 @@ struct SettingsView: View {
                         VStack(spacing: 8) {
                             Button(action: {
                                 Task {
-                                    await iapManager.refreshSubscriptionStatus()
+                                    await iapManager.restorePurchases()
                                 }
                             }) {
                                 HStack(spacing: 4) {
@@ -121,7 +121,7 @@ struct SettingsView: View {
                                             .progressViewStyle(CircularProgressViewStyle(tint: .blue))
                                             .scaleEffect(0.8)
                                     }
-                                    Text("Refresh")
+                                    Text("Restore")
                                         .font(.caption)
                                         .foregroundColor(.blue)
                                 }
