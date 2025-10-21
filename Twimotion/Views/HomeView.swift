@@ -689,7 +689,7 @@ struct HomeView: View {
                                 .scaleEffect(0.9)
                         }
                         
-                        VStack(alignment: .leading, spacing: 2) {
+                        VStack(alignment: .leading, spacing: 4) {
                             Text(gifExporter.isExporting ? "Exporting..." : "Export GIF")
                                 .font(.headline)
                                 .fontWeight(.bold)
@@ -698,6 +698,7 @@ struct HomeView: View {
                                 .font(.caption)
                                 .opacity(0.9)
                         }
+                        .padding(.horizontal, 8)
                         
                         Spacer()
                     }
@@ -705,20 +706,13 @@ struct HomeView: View {
                     .frame(maxWidth: .infinity)
                     .frame(height: 64)
                     .background(
-                        LinearGradient(
-                            gradient: Gradient(colors: gifExporter.isExporting ? 
-                                [Color.orange, Color.orange.opacity(0.8)] : 
-                                [Color.green, Color.blue]
-                            ),
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(gifExporter.isExporting ? Color.orange : Color.blue)
+                            .shadow(color: gifExporter.isExporting ? 
+                                Color.orange.opacity(0.3) : 
+                                Color.blue.opacity(0.2), 
+                                radius: 8, x: 0, y: 4)
                     )
-                    .cornerRadius(20)
-                    .shadow(color: gifExporter.isExporting ? 
-                        Color.orange.opacity(0.4) : 
-                        Color.green.opacity(0.3), 
-                        radius: 12, x: 0, y: 6)
                 }
                 .disabled(inputText.isEmpty || gifExporter.isExporting || isTextTooLong)
                 .scaleEffect((inputText.isEmpty || gifExporter.isExporting || isTextTooLong) ? 0.98 : 1.0)

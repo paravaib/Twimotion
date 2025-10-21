@@ -106,7 +106,7 @@ struct ExportView: View {
     
     private var exportButton: some View {
         Button(action: startExport) {
-            VStack(spacing: 4) {
+            VStack(spacing: 6) {
                 Text(gifExporter.isExporting ? "Exporting..." : "Export GIF")
                     .font(.system(size: 18, weight: .bold))
                     .foregroundColor(.white)
@@ -115,36 +115,13 @@ struct ExportView: View {
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.white.opacity(0.8))
             }
-            .padding(.horizontal, 24)
-            .padding(.vertical, 20)
+            .padding(.horizontal, 32)
+            .padding(.vertical, 24)
             .frame(maxWidth: .infinity)
             .background(
-                ZStack {
-                    // Main gradient
-                    LinearGradient(
-                        gradient: Gradient(colors: [
-                            Color(red: 0.2, green: 1.0, blue: 0.2), // Lime green
-                            Color(red: 0.0, green: 0.5, blue: 1.0)  // Blue
-                        ]),
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                    .cornerRadius(20)
-                    
-                    // Glow effect
-                    if !gifExporter.isExporting {
-                        LinearGradient(
-                            gradient: Gradient(colors: [
-                                Color(red: 0.2, green: 1.0, blue: 0.2).opacity(0.3),
-                                Color(red: 0.0, green: 0.5, blue: 1.0).opacity(0.1)
-                            ]),
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                        .blur(radius: 20)
-                        .offset(x: -10, y: 5)
-                    }
-                }
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color.blue)
+                    .shadow(color: .blue.opacity(0.2), radius: 8, x: 0, y: 4)
             )
             .scaleEffect(gifExporter.isExporting ? 0.98 : 1.0)
             .animation(.easeInOut(duration: 0.2), value: gifExporter.isExporting)
