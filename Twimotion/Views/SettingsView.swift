@@ -55,7 +55,9 @@ struct SettingsView: View {
         } header: {
             Text("App Settings")
         }
+        
     }
+    
     
     // MARK: - About Section
     

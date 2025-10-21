@@ -27,6 +27,7 @@ struct HomeView: View {
     @State private var exportedGIFURL: URL?
     @State private var previewKey: UUID = UUID() // Force preview refresh when theme changes
     @State private var autoSavedToPhotos = false
+    @State private var showingProUpgrade = false
     
     
     // Text length limits for optimal performance
@@ -52,6 +53,29 @@ struct HomeView: View {
     
     private var remainingCharacters: Int {
         maxCharacters - characterCount
+    }
+    
+    // MARK: - Export Button Properties
+    
+    private var exportButtonTitle: String {
+        if !iapManager.canCreateMoreGIFs {
+            return "Daily Limit Reached"
+        }
+        return "Export GIF"
+    }
+    
+    private var exportButtonSubtitle: String {
+        if !iapManager.canCreateMoreGIFs {
+            return "Upgrade to Pro for unlimited GIFs"
+        }
+        return "Save and share your creation"
+    }
+    
+    private var exportButtonColor: Color {
+        if !iapManager.canCreateMoreGIFs {
+            return Color.gray
+        }
+        return gifExporter.isExporting ? Color.orange : Color.blue
     }
     
     // Classic typewriter preset
@@ -171,6 +195,10 @@ struct HomeView: View {
                     ShareSheet(activityItems: [url])
                 }
             }
+            .sheet(isPresented: $showingProUpgrade) {
+                ProUpgradeView()
+                    .environmentObject(iapManager)
+            }
             .fullScreenCover(isPresented: $showingFullScreenPreview) {
                 if !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     FullScreenPreviewView(
@@ -204,8 +232,88 @@ struct HomeView: View {
                 .multilineTextAlignment(.center)
                 .foregroundColor(.primary)
                 .padding(.horizontal, 20)
+            
+            // Daily limit status
+            dailyLimitStatusView
         }
         .padding(.vertical, 12)
+    }
+    
+    // MARK: - Daily Limit Status View
+    
+    private var dailyLimitStatusView: some View {
+        HStack(spacing: 12) {
+            if iapManager.isProUser {
+                // Pro user status
+                HStack(spacing: 8) {
+                    Image(systemName: "crown.fill")
+                        .foregroundColor(.yellow)
+                        .font(.subheadline)
+                    
+                    Text("Pro - Unlimited GIFs")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.primary)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.yellow.opacity(0.1))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color.yellow.opacity(0.3), lineWidth: 1)
+                        )
+                )
+            } else {
+                // Free user status
+                HStack(spacing: 8) {
+                    Image(systemName: "gift.fill")
+                        .foregroundColor(.blue)
+                        .font(.subheadline)
+                    
+                    if iapManager.remainingGIFsToday > 0 {
+                        Text("\(iapManager.remainingGIFsToday) GIFs left today")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundColor(.primary)
+                    } else {
+                        Text("Daily limit reached")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundColor(.red)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(iapManager.remainingGIFsToday > 0 ? Color.blue.opacity(0.1) : Color.red.opacity(0.1))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(iapManager.remainingGIFsToday > 0 ? Color.blue.opacity(0.3) : Color.red.opacity(0.3), lineWidth: 1)
+                        )
+                )
+                
+                // Upgrade button
+                if iapManager.remainingGIFsToday == 0 {
+                    Button(action: {
+                        showingProUpgrade = true
+                    }) {
+                        Text("Upgrade")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.blue)
+                            )
+                    }
+                }
+            }
+        }
     }
     
     // MARK: - Speed Control Section
@@ -679,7 +787,11 @@ struct HomeView: View {
                 // Enhanced export button
                 Button(action: {
                     if !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        startExport()
+                        if !iapManager.canCreateMoreGIFs {
+                            showingProUpgrade = true
+                        } else {
+                            startExport()
+                        }
                     }
                 }) {
                     HStack(spacing: 16) {
@@ -690,11 +802,11 @@ struct HomeView: View {
                         }
                         
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(gifExporter.isExporting ? "Exporting..." : "Export GIF")
+                            Text(gifExporter.isExporting ? "Exporting..." : exportButtonTitle)
                                 .font(.headline)
                                 .fontWeight(.bold)
                             
-                            Text(gifExporter.isExporting ? "Creating your animated GIF" : "Save and share your creation")
+                            Text(gifExporter.isExporting ? "Creating your animated GIF" : exportButtonSubtitle)
                                 .font(.caption)
                                 .opacity(0.9)
                         }
@@ -707,15 +819,12 @@ struct HomeView: View {
                     .frame(height: 64)
                     .background(
                         RoundedRectangle(cornerRadius: 16)
-                            .fill(gifExporter.isExporting ? Color.orange : Color.blue)
-                            .shadow(color: gifExporter.isExporting ? 
-                                Color.orange.opacity(0.3) : 
-                                Color.blue.opacity(0.2), 
-                                radius: 8, x: 0, y: 4)
+                            .fill(exportButtonColor)
+                            .shadow(color: exportButtonColor.opacity(0.3), radius: 8, x: 0, y: 4)
                     )
                 }
-                .disabled(inputText.isEmpty || gifExporter.isExporting || isTextTooLong)
-                .scaleEffect((inputText.isEmpty || gifExporter.isExporting || isTextTooLong) ? 0.98 : 1.0)
+                .disabled(inputText.isEmpty || gifExporter.isExporting || isTextTooLong || !iapManager.canCreateMoreGIFs)
+                .scaleEffect((inputText.isEmpty || gifExporter.isExporting || isTextTooLong || !iapManager.canCreateMoreGIFs) ? 0.98 : 1.0)
                 .animation(.easeInOut(duration: 0.3), value: gifExporter.isExporting)
             
                 // Export progress
@@ -1060,6 +1169,12 @@ struct HomeView: View {
     private func startExport() {
         guard !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         
+        // Check if user can create more GIFs
+        guard iapManager.canCreateMoreGIFs else {
+            showToast("Daily limit reached! Upgrade to Pro for unlimited GIFs.")
+            return
+        }
+        
         showToast("Starting GIF export...")
         
         let phrases = TextSplitter.split(inputText)
@@ -1079,6 +1194,9 @@ struct HomeView: View {
             DispatchQueue.main.async {
                 switch result {
                 case .success(let url):
+                    // Record GIF creation for daily limit tracking
+                    self.iapManager.recordGIFCreation()
+                    
                     self.exportedGIFURL = url
                     self.showToast("GIF exported successfully! Ready to share.")
                     

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Bucket
+   uuid = "C53C1A2F-536F-4500-AFB4-C1A1C593397E"
+   type = "1"
+   version = "2.0">
+   <Breakpoints>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "3504C872-1C3E-40CE-AE45-C4B9B1328C36"
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "Twimotion/Services/IAPManager.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "245"
+            endingLineNumber = "245"
+            landmarkName = "listenForTransactions()"
+            landmarkType = "7">
+            <Locations>
+               <Location
+                  uuid = "3504C872-1C3E-40CE-AE45-C4B9B1328C36 - ec9bde5db1c45893"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "(3) suspend resume partial function for closure #1 () async -&gt; () in Twimotion.IAPManager.listenForTransactions() -&gt; Swift.Task&lt;(), Swift.Error&gt;"
+                  moduleName = "Twimotion.debug.dylib"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/vaibhavparashar/Downloads/IOS%20App/Twimotion/Twimotion/Services/IAPManager.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "245"
+                  endingLineNumber = "245">
+               </Location>
+               <Location
+                  uuid = "3504C872-1C3E-40CE-AE45-C4B9B1328C36 - a72561ca92012294"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "(6) suspend resume partial function for closure #1 () async -&gt; () in Twimotion.IAPManager.listenForTransactions() -&gt; Swift.Task&lt;(), Swift.Error&gt;"
+                  moduleName = "Twimotion.debug.dylib"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/vaibhavparashar/Downloads/IOS%20App/Twimotion/Twimotion/Services/IAPManager.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "245"
+                  endingLineNumber = "245">
+               </Location>
+            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
+   </Breakpoints>
+</Bucket>
