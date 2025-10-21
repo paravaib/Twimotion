@@ -77,7 +77,7 @@ class GIFExporter: ObservableObject {
     @Published var estimatedTimeRemaining: TimeInterval = 0
     @Published var exportError: Error?
     
-    private var startTime: Date?
+    private var _startTime: Date?
     private var frameRenderTimes: [TimeInterval] = []
     
     // MARK: - Public Methods
@@ -111,7 +111,7 @@ class GIFExporter: ObservableObject {
             self.currentFrame = 0
             self.totalFrames = 0
             self.estimatedTimeRemaining = 0
-            self.startTime = nil
+            self._startTime = nil
             self.frameRenderTimes = []
         }
         
@@ -171,7 +171,7 @@ class GIFExporter: ObservableObject {
         DispatchQueue.main.async {
             self.totalFrames = frameCount
             self.currentFrame = 0
-            self.startTime = Date()
+            self._startTime = Date()
             self.frameRenderTimes = []
         }
         
@@ -231,7 +231,7 @@ class GIFExporter: ObservableObject {
                 }
                 
                 // Calculate ETA
-                if let startTime = self.startTime, self.frameRenderTimes.count > 0 {
+                if let startTime = self._startTime, self.frameRenderTimes.count > 0 {
                     let averageFrameTime = self.frameRenderTimes.reduce(0, +) / Double(self.frameRenderTimes.count)
                     let remainingFrames = frameCount - (frameIndex + 1)
                     self.estimatedTimeRemaining = Double(remainingFrames) * averageFrameTime
@@ -328,19 +328,11 @@ class GIFExporter: ObservableObject {
             AnyView(watermarkedView(animatedView)) : 
             AnyView(animatedView)
         
-        // Render SwiftUI view on main thread
-        var image: UIImage?
-        let semaphore = DispatchSemaphore(value: 0)
-        
-        DispatchQueue.main.async {
-            image = self.renderSwiftUIViewToImage(view: finalView, size: size, config: config)
-            semaphore.signal()
-        }
-        
-        semaphore.wait()
+        // Render SwiftUI view using a different approach to avoid main thread blocking
+        let image = renderSwiftUIViewToImageAsync(view: finalView, size: size, config: config)
         
         // Draw image to pixel buffer context
-        if let cgImage = image?.cgImage {
+        if let cgImage = image.cgImage {
             context.draw(cgImage, in: CGRect(origin: .zero, size: size))
         }
     }
@@ -370,6 +362,25 @@ class GIFExporter: ObservableObject {
         }
     }
     
+    private func renderSwiftUIViewToImageAsync(view: AnyView, size: CGSize, config: GIFExporter.ExportConfiguration) -> UIImage {
+        // Use a simpler approach that doesn't require main thread coordination
+        let hostingController = UIHostingController(rootView: view)
+        hostingController.view.frame = CGRect(origin: .zero, size: size)
+        hostingController.view.backgroundColor = .clear
+        
+        // Create image renderer
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { _ in
+            // Fill background with custom color from preset
+            let backgroundColor = config.preset.customSettings.backgroundColor ?? config.preset.template.tokens.backgroundColor
+            UIColor(backgroundColor).setFill()
+            UIRectFill(CGRect(origin: .zero, size: size))
+            
+            // Render the SwiftUI view directly without main thread coordination
+            hostingController.view.drawHierarchy(in: hostingController.view.bounds, afterScreenUpdates: false)
+        }
+    }
+    
     private func watermarkedView(_ content: some View) -> some View {
         ZStack {
             content
@@ -396,6 +407,33 @@ class GIFExporter: ObservableObject {
                         .padding(.bottom, 24)
                 }
             }
+        }
+    }
+    
+    private func createFallbackImage(size: CGSize, config: GIFExporter.ExportConfiguration) -> UIImage {
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { context in
+            // Fill background
+            let backgroundColor = config.preset.customSettings.backgroundColor ?? config.preset.template.tokens.backgroundColor
+            UIColor(backgroundColor).setFill()
+            UIRectFill(CGRect(origin: .zero, size: size))
+            
+            // Add simple text as fallback
+            let text = config.phrases.joined(separator: " ")
+            let attributes: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: 48, weight: .bold),
+                .foregroundColor: UIColor.white
+            ]
+            
+            let textSize = text.size(withAttributes: attributes)
+            let textRect = CGRect(
+                x: (size.width - textSize.width) / 2,
+                y: (size.height - textSize.height) / 2,
+                width: textSize.width,
+                height: textSize.height
+            )
+            
+            text.draw(in: textRect, withAttributes: attributes)
         }
     }
 }

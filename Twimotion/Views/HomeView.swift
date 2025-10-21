@@ -24,10 +24,12 @@ struct HomeView: View {
     @StateObject private var gifExporter = GIFExporter()
     @StateObject private var photoSaver = PhotoSaver()
     @State private var showingShareSheet = false
-    @State private var exportedGIFURL: URL?
+    @State private var _exportedGIFURL: URL?
     @State private var previewKey: UUID = UUID() // Force preview refresh when theme changes
     @State private var autoSavedToPhotos = false
     @State private var showingProUpgrade = false
+    @State private var countdownTimer: Timer?
+    @State private var countdownUpdateTrigger = false // Trigger UI updates
     
     
     // Text length limits for optimal performance
@@ -58,22 +60,43 @@ struct HomeView: View {
     // MARK: - Export Button Properties
     
     private var exportButtonTitle: String {
+        if inputText.isEmpty {
+            return "Enter text to create GIF"
+        }
+        if isTextTooLong {
+            return "Text too long"
+        }
         if !iapManager.canCreateMoreGIFs {
             return "Daily Limit Reached"
+        }
+        if gifExporter.isExporting {
+            return "Exporting..."
         }
         return "Export GIF"
     }
     
     private var exportButtonSubtitle: String {
+        if inputText.isEmpty {
+            return "Type your message above"
+        }
+        if isTextTooLong {
+            return "Reduce text length to continue"
+        }
         if !iapManager.canCreateMoreGIFs {
             return "Upgrade to Pro for unlimited GIFs"
+        }
+        if gifExporter.isExporting {
+            return "Creating your animated GIF"
         }
         return "Save and share your creation"
     }
     
     private var exportButtonColor: Color {
-        if !iapManager.canCreateMoreGIFs {
+        if inputText.isEmpty || isTextTooLong {
             return Color.gray
+        }
+        if !iapManager.canCreateMoreGIFs {
+            return Color.red
         }
         return gifExporter.isExporting ? Color.orange : Color.blue
     }
@@ -173,6 +196,10 @@ struct HomeView: View {
                 if !UserDefaults.standard.bool(forKey: "hasSeenOnboarding") {
                     showingOnboarding = true
                 }
+                startCountdownTimer()
+            }
+            .onDisappear {
+                stopCountdownTimer()
             }
             .onChange(of: animationSpeed) { oldSpeed, newSpeed in
                 // Speed changed - preview will automatically update due to duration change
@@ -184,6 +211,14 @@ struct HomeView: View {
                 previewKey = UUID()
                 print("DEBUG: Theme changed from \(oldTheme.name) to \(newTheme.name)")
             }
+            .onChange(of: iapManager.isProUser) { oldValue, newValue in
+                // Pro status changed - restart timer
+                if newValue {
+                    stopCountdownTimer() // Stop timer for Pro users
+                } else {
+                    startCountdownTimer() // Start timer for free users
+                }
+            }
             .sheet(isPresented: $showingOnboarding) {
                 OnboardingView()
             }
@@ -191,7 +226,7 @@ struct HomeView: View {
                 ThemeSelectionView(themeManager: themeManager)
             }
             .sheet(isPresented: $showingShareSheet) {
-                if let url = exportedGIFURL {
+                if let url = _exportedGIFURL {
                     ShareSheet(activityItems: [url])
                 }
             }
@@ -267,22 +302,36 @@ struct HomeView: View {
                 )
             } else {
                 // Free user status
-                HStack(spacing: 8) {
-                    Image(systemName: "gift.fill")
-                        .foregroundColor(.blue)
-                        .font(.subheadline)
-                    
-                    if iapManager.remainingGIFsToday > 0 {
-                        Text("\(iapManager.remainingGIFsToday) GIFs left today")
+                VStack(spacing: 4) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "gift.fill")
+                            .foregroundColor(.blue)
                             .font(.subheadline)
-                            .fontWeight(.medium)
-                            .foregroundColor(.primary)
-                    } else {
-                        Text("Daily limit reached")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                            .foregroundColor(.red)
+                        
+                        if iapManager.remainingGIFsToday > 0 {
+                            Text("\(iapManager.remainingGIFsToday) GIFs left today")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .foregroundColor(.primary)
+                        } else {
+                            Text("Daily limit reached")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .foregroundColor(.red)
+                        }
                     }
+                    
+                    // Countdown timer
+                    HStack(spacing: 4) {
+                        Image(systemName: "clock.fill")
+                            .foregroundColor(.secondary)
+                            .font(.caption)
+                        
+                        Text("Resets in \(iapManager.formattedTimeUntilReset)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .id(countdownUpdateTrigger) // Force update when timer triggers
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
@@ -935,7 +984,7 @@ struct HomeView: View {
                 }
                 
                 // Export completed message
-                if let exportedURL = exportedGIFURL, !gifExporter.isExporting {
+                if let exportedURL = _exportedGIFURL, !gifExporter.isExporting {
                     VStack(spacing: 16) {
                         HStack {
                             Image(systemName: "checkmark.circle.fill")
@@ -1167,14 +1216,19 @@ struct HomeView: View {
     // MARK: - Export Methods
     
     private func startExport() {
-        guard !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        guard !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { 
+            print("DEBUG: Export blocked - no text entered")
+            return 
+        }
         
         // Check if user can create more GIFs
         guard iapManager.canCreateMoreGIFs else {
+            print("DEBUG: Export blocked - daily limit reached")
             showToast("Daily limit reached! Upgrade to Pro for unlimited GIFs.")
             return
         }
         
+        print("DEBUG: Starting export - text: '\(inputText)', canCreateMoreGIFs: \(iapManager.canCreateMoreGIFs)")
         showToast("Starting GIF export...")
         
         let phrases = TextSplitter.split(inputText)
@@ -1197,7 +1251,7 @@ struct HomeView: View {
                     // Record GIF creation for daily limit tracking
                     self.iapManager.recordGIFCreation()
                     
-                    self.exportedGIFURL = url
+                    self._exportedGIFURL = url
                     self.showToast("GIF exported successfully! Ready to share.")
                     
                     // Auto-save to Photos if enabled
@@ -1217,7 +1271,7 @@ struct HomeView: View {
     }
     
     private func saveToPhotos() {
-        guard let gifURL = exportedGIFURL else { return }
+        guard let gifURL = _exportedGIFURL else { return }
         
         photoSaver.saveToPhotos(gifURL: gifURL) { result in
             switch result {
@@ -1230,7 +1284,7 @@ struct HomeView: View {
     }
     
     private func autoSaveToPhotos() {
-        guard let gifURL = exportedGIFURL else { return }
+        guard let gifURL = _exportedGIFURL else { return }
         
         photoSaver.autoSaveToPhotos(gifURL: gifURL) { result in
             switch result {
@@ -1243,6 +1297,24 @@ struct HomeView: View {
                 print("Auto-save to Photos failed: \(error.localizedDescription)")
             }
         }
+    }
+    
+    // MARK: - Timer Methods
+    
+    private func startCountdownTimer() {
+        // Only start timer for free users
+        guard !iapManager.isProUser else { return }
+        
+        stopCountdownTimer() // Stop any existing timer
+        
+        countdownTimer = Timer.scheduledTimer(withTimeInterval: 60.0, repeats: true) { _ in
+            countdownUpdateTrigger.toggle() // Trigger UI update
+        }
+    }
+    
+    private func stopCountdownTimer() {
+        countdownTimer?.invalidate()
+        countdownTimer = nil
     }
 }
 
