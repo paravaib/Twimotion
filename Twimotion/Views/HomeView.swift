@@ -169,6 +169,10 @@ struct HomeView: View {
                     endPoint: .bottom
                 )
             )
+            .onTapGesture {
+                // Dismiss keyboard when tapping outside text input
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            }
             .navigationTitle("Twimotion")
             .navigationBarTitleDisplayMode(.large)
             .navigationBarItems(
