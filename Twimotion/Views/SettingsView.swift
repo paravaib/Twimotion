@@ -117,63 +117,23 @@ struct SettingsView: View {
                             .foregroundColor(.green)
                             .font(.title2)
                         
-                        VStack(spacing: 8) {
-                            Button(action: {
-                                Task {
-                                    await iapManager.restorePurchases()
-                                }
-                            }) {
-                                HStack(spacing: 4) {
-                                    if iapManager.isLoading {
-                                        ProgressView()
-                                            .progressViewStyle(CircularProgressViewStyle(tint: .blue))
-                                            .scaleEffect(0.8)
-                                    }
-                                    Text("Restore")
-                                        .font(.caption)
-                                        .foregroundColor(.blue)
-                                }
+                        Button(action: {
+                            Task {
+                                await iapManager.restorePurchases()
                             }
-                            .disabled(iapManager.isLoading)
-                            
-                            #if DEBUG
-                            Button(action: {
-                                Task {
-                                    await iapManager.forceCheckSubscriptionStatus()
+                        }) {
+                            HStack(spacing: 4) {
+                                if iapManager.isLoading {
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle(tint: .blue))
+                                        .scaleEffect(0.8)
                                 }
-                            }) {
-                                Text("Force Check")
-                                    .font(.caption2)
-                                    .foregroundColor(.orange)
-                            }
-                            
-                            Button(action: {
-                                Task {
-                                    await iapManager.forceRestorePurchases()
-                                }
-                            }) {
-                                Text("Force Restore")
-                                    .font(.caption2)
-                                    .foregroundColor(.purple)
-                            }
-                            
-                            Button(action: {
-                                iapManager.resetProStatus()
-                            }) {
-                                Text("Reset Status")
-                                    .font(.caption2)
-                                    .foregroundColor(.red)
-                            }
-                            
-                            Button(action: {
-                                iapManager.manualResetDailyGIFs()
-                            }) {
-                                Text("Reset GIFs")
-                                    .font(.caption2)
+                                Text("Restore")
+                                    .font(.caption)
                                     .foregroundColor(.blue)
                             }
-                            #endif
                         }
+                        .disabled(iapManager.isLoading)
                     }
                 }
                 .padding(.vertical, 8)

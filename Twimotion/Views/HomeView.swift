@@ -181,6 +181,36 @@ struct HomeView: View {
             .navigationBarTitleDisplayMode(.large)
             .navigationBarItems(
                 trailing: HStack(spacing: 12) {
+                    // Pro badge for Pro users
+                    if iapManager.isProUser {
+                        HStack(spacing: 4) {
+                            Image(systemName: "crown.fill")
+                                .font(.caption2)
+                                .foregroundColor(.yellow)
+                            
+                            Text("Pro")
+                                .font(.caption2)
+                                .fontWeight(.bold)
+                                .foregroundColor(.white)
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(
+                            Capsule()
+                                .fill(
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [
+                                            Color.blue,
+                                            Color.purple
+                                        ]),
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                                .shadow(color: .blue.opacity(0.3), radius: 2, x: 0, y: 1)
+                        )
+                    }
+                    
                     // Upgrade to Pro button for free users
                     if !iapManager.isProUser {
                         Button(action: {
@@ -337,26 +367,48 @@ struct HomeView: View {
             
             // Optional status indicator for free users
             if !iapManager.isProUser {
-                HStack(spacing: 6) {
-                    Image(systemName: "clock")
-                        .font(.caption)
-                        .foregroundColor(.orange)
+                VStack(spacing: 8) {
+                    // Remaining animations count
+                    HStack(spacing: 6) {
+                        Image(systemName: "clock")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                        
+                        Text("Free Plan - \(iapManager.remainingGIFsToday) animations left today")
+                            .font(.caption)
+                            .fontWeight(.medium)
+                            .foregroundColor(.orange)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(
+                        Capsule()
+                            .fill(Color.orange.opacity(0.1))
+                            .overlay(
+                                Capsule()
+                                    .stroke(Color.orange.opacity(0.3), lineWidth: 1)
+                            )
+                    )
                     
-                    Text("Free Plan - \(iapManager.remainingGIFsToday) animations left today")
-                        .font(.caption)
-                        .fontWeight(.medium)
-                        .foregroundColor(.orange)
+                    // Reset time countdown
+                    HStack(spacing: 6) {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                        
+                        Text("Resets in \(iapManager.formattedTimeUntilReset)")
+                            .font(.caption2)
+                            .fontWeight(.medium)
+                            .foregroundColor(.secondary)
+                            .id(countdownUpdateTrigger) // Force UI update when timer triggers
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(
+                        Capsule()
+                            .fill(Color(.systemGray6))
+                    )
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(
-                    Capsule()
-                        .fill(Color.orange.opacity(0.1))
-                        .overlay(
-                            Capsule()
-                                .stroke(Color.orange.opacity(0.3), lineWidth: 1)
-                        )
-                )
             }
         }
         .padding(.horizontal, 20)
@@ -1151,7 +1203,7 @@ struct HomeView: View {
             phrases: phrases,
             preset: currentPreset,
             duration: duration,
-            includeWatermark: true // Always include watermark for branding
+            includeWatermark: false // No watermark/branding in exported videos
         )
         
         mp4Exporter.exportMP4(config: exportConfig) { result in
