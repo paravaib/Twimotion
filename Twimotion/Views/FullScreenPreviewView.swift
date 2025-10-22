@@ -95,6 +95,30 @@ struct FullScreenPreviewView: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 10)
                 
+                // Preview disclaimer
+                HStack(spacing: 8) {
+                    Image(systemName: "info.circle.fill")
+                        .font(.caption)
+                        .foregroundColor(.blue)
+                    
+                    Text("This is a preview - exported animation may have higher quality and better performance")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundColor(.white.opacity(0.8))
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.blue.opacity(0.1))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(Color.blue.opacity(0.3), lineWidth: 1)
+                        )
+                )
+                .padding(.horizontal, 20)
+                
                 Spacer()
                 
                 // Animation content - full screen
@@ -230,7 +254,7 @@ struct FullScreenPreviewView: View {
                                 .font(.title2)
                         }
                         
-                        Text(mp4Exporter.isExporting ? "Exporting..." : "Export Video")
+                        Text(mp4Exporter.isExporting ? "Exporting..." : "Export Animation")
                             .font(.headline)
                             .fontWeight(.bold)
                     }
@@ -251,7 +275,7 @@ struct FullScreenPreviewView: View {
                 if mp4Exporter.isExporting {
                     VStack(spacing: 8) {
                         HStack {
-                            Text("Creating your video...")
+                            Text("Creating your animation...")
                                 .font(.subheadline)
                                 .foregroundColor(.white)
                             Spacer()
@@ -275,7 +299,7 @@ struct FullScreenPreviewView: View {
                             .foregroundColor(.green)
                             .font(.title2)
                         
-                        Text("Video Ready!")
+                        Text("Animation Ready!")
                             .font(.headline)
                             .fontWeight(.bold)
                             .foregroundColor(.white)
@@ -352,7 +376,7 @@ struct FullScreenPreviewView: View {
     private func startExport() {
         guard canExport else { return }
         
-        showToast("Starting video export...")
+        showToast("Starting animation export...")
         
         let exportConfig = MP4Exporter.MP4ExportConfiguration(
             phrases: phrases,
@@ -368,7 +392,7 @@ struct FullScreenPreviewView: View {
                     self.iapManager.recordGIFCreation()
                     self.exportedVideoURL = url
                     self.exportCompleted = true
-                    self.showToast("Video exported successfully!")
+                    self.showToast("Animation exported successfully!")
                     
                     if self.settingsManager.isAutoSaveEnabled {
                         self.autoSaveToPhotos()
@@ -386,7 +410,7 @@ struct FullScreenPreviewView: View {
         photoSaver.saveToPhotos(videoURL: videoURL) { result in
             switch result {
             case .success:
-                self.showToast("Video saved to Photos!")
+                self.showToast("Animation saved to Photos!")
             case .failure(let error):
                 self.showToast("Failed to save to Photos: \(error.localizedDescription)")
             }
@@ -400,7 +424,7 @@ struct FullScreenPreviewView: View {
             switch result {
             case .success:
                 self.autoSavedToPhotos = true
-                self.showToast("Auto-saved to Photos successfully!")
+                self.showToast("Animation auto-saved to Photos successfully!")
             case .failure(let error):
                 self.showToast("Auto-save failed: \(error.localizedDescription)")
             }
