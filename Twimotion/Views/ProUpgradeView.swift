@@ -64,12 +64,12 @@ struct ProUpgradeView: View {
                 .font(.system(size: 60))
                 .foregroundColor(.yellow)
             
-            Text("Unlock Unlimited GIFs")
+            Text("Unlock Unlimited Typewriter Animations")
                 .font(.largeTitle)
                 .fontWeight(.bold)
                 .multilineTextAlignment(.center)
             
-            Text("Create as many animated GIFs as you want, whenever you want")
+            Text("Create as many typewriter animations as you want, whenever you want")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
@@ -115,8 +115,8 @@ struct ProUpgradeView: View {
                 
                 benefitRow(
                     icon: "infinity",
-                    title: "Unlimited GIFs",
-                    description: "Create as many GIFs as you want, no daily limits"
+                    title: "Unlimited Animations",
+                    description: "Create as many typewriter animations as you want, no daily limits"
                 )
                 
                 benefitRow(
@@ -134,7 +134,7 @@ struct ProUpgradeView: View {
                 benefitRow(
                     icon: "clock",
                     title: "No Waiting",
-                    description: "No need to wait until midnight for more GIFs"
+                    description: "No need to wait until midnight for more animations"
                 )
             }
         }

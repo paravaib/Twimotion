@@ -86,15 +86,15 @@ struct HomeView: View {
             return "Reduce text length to continue"
         }
         if !iapManager.canCreateMoreGIFs {
-            return "Upgrade to Pro for unlimited videos"
+            return "Upgrade to Pro for unlimited animations"
         }
         if !permissionManager.hasPhotoLibraryPermission {
-            return "Enable in Settings to save videos"
+            return "Enable in Settings to save animations"
         }
         if mp4Exporter.isExporting {
-            return "Creating your animated video"
+            return "Creating your typewriter animation"
         }
-        return "Save and share your creation"
+        return "Save and share your animation"
     }
     
     private var exportButtonColor: Color {
@@ -328,7 +328,7 @@ struct HomeView: View {
                 .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
             
             // Enhanced tagline with better typography
-            Text("Transform your words into scroll-stopping videos.")
+            Text("Transform boring text into engaging typewriter animations.")
                 .font(.system(size: 16, weight: .medium, design: .default))
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
@@ -342,7 +342,7 @@ struct HomeView: View {
                         .font(.caption)
                         .foregroundColor(.orange)
                     
-                    Text("Free Plan - \(iapManager.remainingGIFsToday) videos left today")
+                    Text("Free Plan - \(iapManager.remainingGIFsToday) animations left today")
                         .font(.caption)
                         .fontWeight(.medium)
                         .foregroundColor(.orange)
@@ -595,12 +595,12 @@ struct HomeView: View {
                             }
                             
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("Write your idea...")
+                                Text("Type your text here...")
                                     .font(.body)
                                     .fontWeight(.medium)
                                     .foregroundColor(.primary)
                                 
-                                Text("Transform your thoughts into engaging videos")
+                                Text("Watch it come alive with typewriter animation")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
@@ -711,12 +711,12 @@ struct HomeView: View {
                     .foregroundColor(.white)
                 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Preview Animation")
+                    Text("Preview Typewriter Animation")
                         .font(.headline)
                         .fontWeight(.semibold)
                         .foregroundColor(.white)
                     
-                    Text("Tap to turn your words into motion.")
+                    Text("See your text come alive with typewriter effect.")
                         .font(.caption)
                         .foregroundColor(.white.opacity(0.8))
                 }
@@ -749,7 +749,7 @@ struct HomeView: View {
     private var exportSection: some View {
         VStack(alignment: .leading, spacing: 20) {
             HStack {
-                Text("Export Your Video")
+                Text("Export Your Animation")
                     .font(.headline)
                     .fontWeight(.semibold)
             }
@@ -808,7 +808,7 @@ struct HomeView: View {
                             .foregroundColor(.orange)
                             .font(.system(size: 16))
                         
-                        Text("Photos permission required to export videos")
+                        Text("Photos permission required to export animations")
                             .font(.caption)
                             .foregroundColor(.orange)
                         
@@ -841,7 +841,7 @@ struct HomeView: View {
                                 Image(systemName: "clock")
                                     .font(.caption)
                                     .foregroundColor(.orange)
-                                Text("Creating your video...")
+                                Text("Creating your animation...")
                                     .font(.subheadline)
                                     .fontWeight(.medium)
                                 Spacer()
@@ -948,12 +948,12 @@ struct HomeView: View {
                                 .font(.title2)
                             
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("GIF Ready!")
+                                Text("Animation Ready!")
                                     .font(.headline)
                                     .fontWeight(.bold)
                                     .foregroundColor(.green)
                                 
-                                Text("Your animated GIF has been created successfully")
+                                Text("Your typewriter animation has been created successfully")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
@@ -1086,9 +1086,9 @@ struct HomeView: View {
             
             await MainActor.run {
                 if granted {
-                    showToast("Photos permission granted! You can now export GIFs.")
+                    showToast("Photos permission granted! You can now export animations.")
                 } else {
-                    showToast("Photos permission is required to save GIFs.")
+                    showToast("Photos permission is required to save animations.")
                 }
             }
         }
@@ -1110,7 +1110,7 @@ struct HomeView: View {
         if let clipboardText = UIPasteboard.general.string {
             inputText = clipboardText
             updateSplitPreview()
-            showToast("Text pasted! Preview your animation below")
+            showToast("Text pasted! Preview your typewriter animation below")
         }
     }
     
@@ -1138,11 +1138,11 @@ struct HomeView: View {
         
         // Check if user can create more videos
         guard iapManager.canCreateMoreGIFs else {
-            showToast("Daily limit reached! Upgrade to Pro for unlimited videos.")
+            showToast("Daily limit reached! Upgrade to Pro for unlimited animations.")
             return
         }
         
-        showToast("Starting video export...")
+        showToast("Starting animation export...")
         
         let phrases = TextSplitter.split(inputText)
         let duration = DeterministicAnimationEngine.calculateVideoDuration(for: phrases, speedMultiplier: animationSpeed)
@@ -1162,7 +1162,7 @@ struct HomeView: View {
                     self.iapManager.recordGIFCreation()
                     
                     self._exportedVideoURL = url
-                    self.showToast("Video exported successfully! Ready to share.")
+                    self.showToast("Animation exported successfully! Ready to share.")
                     
                     // Auto-save to Photos if enabled
                     if self.settingsManager.isAutoSaveEnabled {
@@ -1181,7 +1181,7 @@ struct HomeView: View {
         photoSaver.saveToPhotos(videoURL: videoURL) { result in
             switch result {
             case .success:
-                self.showToast("Video saved to Photos!")
+                self.showToast("Animation saved to Photos!")
             case .failure(let error):
                 self.showToast("Failed to save to Photos: \(error.localizedDescription)")
             }
@@ -1195,7 +1195,7 @@ struct HomeView: View {
             switch result {
             case .success:
                 self.autoSavedToPhotos = true
-                self.showToast("Auto-saved to Photos successfully!")
+                self.showToast("Animation auto-saved to Photos successfully!")
             case .failure(let error):
                 self.showToast("Auto-save failed: \(error.localizedDescription)")
             }

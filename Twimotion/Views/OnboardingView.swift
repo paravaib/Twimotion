@@ -57,20 +57,20 @@ struct OnboardingView: View {
             VStack(spacing: 16) {
                 onboardingStep(
                     icon: "doc.text",
-                    title: "Paste",
-                    description: "Enter or paste your text"
+                    title: "Type Your Text",
+                    description: "Enter or paste your text to animate"
                 )
                 
                 onboardingStep(
                     icon: "play.rectangle",
                     title: "Preview",
-                    description: "Watch your animation come to life"
+                    description: "Watch your text come alive with typewriter animation"
                 )
                 
                 onboardingStep(
                     icon: "square.and.arrow.up",
                     title: "Export",
-                    description: "Save and share your animated GIF"
+                    description: "Save and share your typewriter animation"
                 )
             }
         }
