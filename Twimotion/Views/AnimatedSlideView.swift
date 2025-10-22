@@ -79,30 +79,41 @@ struct AnimatedSlideView: View {
     }
     
     private func paragraphView(geometry: GeometryProxy) -> some View {
-        let baseFontSize = calculateFontSize(for: geometry.size)
+        // Use shared text renderer for consistent layout
+        let config = SharedTextRenderer.TextLayoutConfig.defaultConfig(
+            for: geometry.size,
+            textColor: textColor,
+            backgroundColor: backgroundColor
+        )
         
-        return VStack(alignment: .leading, spacing: 8) {
-            ForEach(Array(phraseAnimations.enumerated()), id: \.offset) { index, phraseAnimation in
-                if phraseAnimation.isVisible && phraseAnimation.opacity > 0 {
-                    Text(phraseAnimation.text)
-                        .font(.system(size: baseFontSize, weight: .bold, design: fontStyle.fontDesign))
-                        .foregroundColor(textColor)
-                        .opacity(phraseAnimation.opacity)
-                        .scaleEffect(phraseAnimation.scale)
-                        .shadow(color: .black.opacity(0.5), radius: 2, x: 1, y: 1)
+        if let result = SharedTextRenderer.prepareText(phraseAnimations: phraseAnimations, config: config) {
+            return AnyView(
+                VStack {
+                    // Display text using shared renderer
+                    SharedTextRenderer.renderToSwiftUIView(result: result, config: config)
+                    
+                    // Add blinking cursor for typewriter animation
+                    if animationType == .typewriter && t < 1.0 {
+                        Text("|")
+                            .font(.system(size: config.fontSize, weight: .bold, design: config.fontStyle.fontDesign))
+                            .foregroundColor(textColor)
+                            .opacity(blinkingCursorOpacity())
+                            .animation(.easeInOut(duration: 0.5).repeatForever(autoreverses: true), value: t)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, config.horizontalPadding)
+                    }
                 }
-            }
-            
-            // Add blinking cursor for typewriter animation
-            if animationType == .typewriter && t < 1.0 {
-                Text("|")
-                    .font(.system(size: baseFontSize, weight: .bold, design: fontStyle.fontDesign))
-                    .foregroundColor(textColor)
-                    .opacity(blinkingCursorOpacity())
-                    .animation(.easeInOut(duration: 0.5).repeatForever(autoreverses: true), value: t)
-            }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            )
+        } else {
+            // No visible text
+            return AnyView(
+                VStack {
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            )
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
     
     private func calculateFontSize(for size: CGSize) -> CGFloat {
