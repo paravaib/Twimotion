@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import CoreText
 
 /// Simplified animated view that renders kinetic typography
 struct AnimatedSlideView: View {
@@ -79,18 +80,27 @@ struct AnimatedSlideView: View {
     }
     
     private func paragraphView(geometry: GeometryProxy) -> some View {
-        // Use shared text renderer for consistent layout
+        // Use per-line animation for consistent preview/export experience
         let config = SharedTextRenderer.TextLayoutConfig.defaultConfig(
             for: geometry.size,
             textColor: textColor,
             backgroundColor: backgroundColor
         )
         
-        if let result = SharedTextRenderer.prepareText(phraseAnimations: phraseAnimations, config: config) {
+        if let lineData = preparePerLineText(phraseAnimations: phraseAnimations, config: config) {
             return AnyView(
-                VStack {
-                    // Display text using shared renderer
-                    SharedTextRenderer.renderToSwiftUIView(result: result, config: config)
+                VStack(spacing: 0) {
+                    // Render each line with per-line animation
+                    ForEach(Array(lineData.lines.enumerated()), id: \.offset) { lineIndex, line in
+                        PerLineAnimatedText(
+                            line: line,
+                            lineIndex: lineIndex,
+                            totalLines: lineData.lines.count,
+                            config: config,
+                            t: t,
+                            animationType: animationType
+                        )
+                    }
                     
                     // Add blinking cursor for typewriter animation
                     if animationType == .typewriter && t < 1.0 {
@@ -135,6 +145,141 @@ struct AnimatedSlideView: View {
         // This simulates the teleprompter text moving up the screen
         let maxOffset = size.height * 0.05 // Maximum 5% of screen height
         return -maxOffset * t // Negative offset moves text upward
+    }
+    
+    // MARK: - Per-Line Text Preparation
+    
+    private func preparePerLineText(
+        phraseAnimations: [DeterministicAnimationEngine.PhraseAnimation],
+        config: SharedTextRenderer.TextLayoutConfig
+    ) -> PerLineTextData? {
+        // Get visible phrases
+        let visiblePhrases = phraseAnimations.enumerated().compactMap { index, phraseAnimation in
+            return phraseAnimation.isVisible && phraseAnimation.opacity > 0 ? phraseAnimation.text : nil
+        }
+        
+        guard !visiblePhrases.isEmpty else { return nil }
+        
+        // Combine all visible phrases into a single text block for line analysis
+        let combinedText = visiblePhrases.joined(separator: " ")
+        
+        // Use CTFramesetter to get precise line information (matching MP4 export)
+        let font = UIFont.systemFont(ofSize: config.fontSize, weight: .bold)
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: font,
+            .foregroundColor: UIColor(config.textColor)
+        ]
+        
+        let attributedString = NSAttributedString(string: combinedText, attributes: attributes)
+        let framesetter = CTFramesetterCreateWithAttributedString(attributedString)
+        
+        // Calculate text container size (matching preview padding)
+        let textWidth = config.canvasSize.width - 2 * config.horizontalPadding
+        let textHeight = config.canvasSize.height * 0.8
+        let textRect = CGRect(x: 0, y: 0, width: textWidth, height: textHeight)
+        
+        // Create path for text layout
+        let path = CGPath(rect: textRect, transform: nil)
+        let frame = CTFramesetterCreateFrame(framesetter, CFRange(location: 0, length: 0), path, nil)
+        
+        // Get line information
+        let lines = CTFrameGetLines(frame) as! [CTLine]
+        let lineCount = lines.count
+        
+        guard lineCount > 0 else { return nil }
+        
+        // Get line origins
+        var lineOrigins = Array<CGPoint>(repeating: .zero, count: lineCount)
+        CTFrameGetLineOrigins(frame, CFRange(location: 0, length: lineCount), &lineOrigins)
+        
+        // Extract line strings
+        let lineStrings = lines.map { line in
+            let lineRange = CTLineGetStringRange(line)
+            return (combinedText as NSString).substring(with: NSRange(location: lineRange.location, length: lineRange.length))
+        }
+        
+        return PerLineTextData(
+            lines: lineStrings,
+            lineOrigins: lineOrigins,
+            textWidth: textWidth,
+            fontSize: config.fontSize
+        )
+    }
+}
+
+// MARK: - Per-Line Animation Support
+
+struct PerLineTextData {
+    let lines: [String]
+    let lineOrigins: [CGPoint]
+    let textWidth: CGFloat
+    let fontSize: CGFloat
+}
+
+struct PerLineAnimatedText: View {
+    let line: String
+    let lineIndex: Int
+    let totalLines: Int
+    let config: SharedTextRenderer.TextLayoutConfig
+    let t: Double
+    let animationType: DeterministicAnimationEngine.AnimationType
+    
+    var body: some View {
+        Text(line)
+            .font(.system(size: config.fontSize, weight: .bold, design: config.fontStyle.fontDesign))
+            .foregroundColor(config.textColor)
+            .multilineTextAlignment(.leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, config.horizontalPadding)
+            .shadow(color: .black.opacity(0.5), radius: 2, x: 1, y: 1)
+            .opacity(calculateLineOpacity())
+            .scaleEffect(calculateLineScale())
+            .offset(y: calculateLineOffset())
+            .animation(.easeOut(duration: 0.15), value: t)
+    }
+    
+    // MARK: - Per-Line Animation Calculations
+    
+    private func calculateLineOpacity() -> Double {
+        // Per-line timing (matching MP4 export)
+        let lineAnimationDuration = 0.15
+        let lineSpacing = 0.05
+        let lineStartTime = Double(lineIndex) * lineSpacing
+        let lineProgress = max(0.0, min(1.0, (t - lineStartTime) / lineAnimationDuration))
+        
+        // Smooth fade-in with slight hold
+        if lineProgress <= 0.3 {
+            return lineProgress / 0.3 // Fade in over first 30%
+        } else if lineProgress <= 0.8 {
+            return 1.0 // Hold at full opacity
+        } else {
+            return 1.0
+        }
+    }
+    
+    private func calculateLineScale() -> Double {
+        // Per-line timing (matching MP4 export)
+        let lineAnimationDuration = 0.15
+        let lineSpacing = 0.05
+        let lineStartTime = Double(lineIndex) * lineSpacing
+        let lineProgress = max(0.0, min(1.0, (t - lineStartTime) / lineAnimationDuration))
+        
+        // Subtle scale effect
+        let scaleProgress = min(1.0, lineProgress / 0.3) // Scale completes in first 30%
+        return 0.95 + 0.05 * scaleProgress // Scale from 0.95 to 1.0
+    }
+    
+    private func calculateLineOffset() -> CGFloat {
+        // Per-line timing (matching MP4 export)
+        let lineAnimationDuration = 0.15
+        let lineSpacing = 0.05
+        let lineStartTime = Double(lineIndex) * lineSpacing
+        let lineProgress = max(0.0, min(1.0, (t - lineStartTime) / lineAnimationDuration))
+        
+        // Slide up effect
+        let slideDistance = config.fontSize * 0.3
+        let slideProgress = min(1.0, lineProgress / 0.4) // Slide completes in first 40%
+        return -slideDistance * (1.0 - slideProgress)
     }
 }
 

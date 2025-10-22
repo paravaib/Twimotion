@@ -380,7 +380,7 @@ class MP4Exporter: ObservableObject {
         }
     }
     
-    // MARK: - Direct Text Rendering (Simplified to match preview)
+    // MARK: - Direct Text Rendering with Per-Line Animation
     
     private func renderTextDirectly(
         context: CGContext,
@@ -403,70 +403,183 @@ class MP4Exporter: ObservableObject {
             return 
         }
         
-        print("MP4Exporter: Rendering \(visiblePhrases.count) visible phrases with fontSize: \(fontSize)")
+        print("MP4Exporter: Rendering \(visiblePhrases.count) visible phrases with per-line animation, fontSize: \(fontSize)")
         
-        // Calculate vertical positioning (bottom-aligned for teleprompter effect)
-        let totalHeight = CGFloat(visiblePhrases.count) * fontSize * 1.2
-        let bottomPadding = size.height * 0.1 // 10% from bottom
+        // Combine all visible phrases into a single text block for line analysis
+        let combinedText = visiblePhrases.map { $0.animation.text }.joined(separator: " ")
+        
+        // Use CTFramesetter to get precise line information
+        let font = UIFont.systemFont(ofSize: fontSize, weight: .bold)
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: font,
+            .foregroundColor: UIColor(textColor)
+        ]
+        
+        let attributedString = NSAttributedString(string: combinedText, attributes: attributes)
+        let framesetter = CTFramesetterCreateWithAttributedString(attributedString)
+        
+        // Calculate text container size (matching preview padding)
+        let textWidth = size.width * 0.84
+        let textHeight = size.height * 0.8
+        let textRect = CGRect(x: 0, y: 0, width: textWidth, height: textHeight)
+        
+        // Create path for text layout
+        let path = CGPath(rect: textRect, transform: nil)
+        let frame = CTFramesetterCreateFrame(framesetter, CFRange(location: 0, length: 0), path, nil)
+        
+        // Get line information
+        let lines = CTFrameGetLines(frame) as! [CTLine]
+        let lineCount = lines.count
+        
+        guard lineCount > 0 else { return }
+        
+        // Get line origins
+        var lineOrigins = Array<CGPoint>(repeating: .zero, count: lineCount)
+        CTFrameGetLineOrigins(frame, CFRange(location: 0, length: lineCount), &lineOrigins)
+        
+        // Calculate vertical positioning (bottom-aligned)
+        let totalHeight = CGFloat(lineCount) * fontSize * 1.2
+        let bottomPadding = size.height * 0.1
         let baseStartY = size.height - totalHeight - bottomPadding
         
-        // Add teleprompter scrolling effect (subtle upward movement)
-        let maxOffset = size.height * 0.05 // Maximum 5% of screen height
-        let teleprompterOffset = -maxOffset * t // Negative offset moves text upward
-        let startY = baseStartY + teleprompterOffset
+        // Per-line animation parameters
+        let lineAnimationDuration = 0.15 // Duration for each line's fade+slide
+        let lineSpacing = 0.05 // Delay between lines
+        let slideDistance = fontSize * 0.3 // How far each line slides up
         
-        for (phraseIndex, phraseData) in visiblePhrases.enumerated() {
-            let phraseAnimation = phraseData.animation
-            let phraseText = phraseAnimation.text
+        // Render each line with per-line animation
+        for (lineIndex, line) in lines.enumerated() {
+            let lineRange = CTLineGetStringRange(line)
+            let lineString = (combinedText as NSString).substring(with: NSRange(location: lineRange.location, length: lineRange.length))
             
-            print("MP4Exporter: Rendering phrase \(phraseIndex): '\(phraseText)' with opacity: \(phraseAnimation.opacity), scale: \(phraseAnimation.scale)")
+            // Calculate per-line progress
+            let lineStartTime = Double(lineIndex) * lineSpacing
+            let lineProgress = max(0.0, min(1.0, (t - lineStartTime) / lineAnimationDuration))
             
-            // Calculate phrase-specific font size with scaling
-            let scaledFontSize = fontSize * phraseAnimation.scale
-            let font = UIFont.systemFont(ofSize: scaledFontSize, weight: .bold)
+            // Calculate line-specific opacity and transform
+            let lineOpacity = calculateLineOpacity(progress: lineProgress)
+            let lineTransform = calculateLineTransform(progress: lineProgress, slideDistance: slideDistance)
             
-            // Set up text attributes
-            let attributes: [NSAttributedString.Key: Any] = [
-                .font: font,
-                .foregroundColor: UIColor(textColor).withAlphaComponent(phraseAnimation.opacity)
-            ]
+            // Skip lines that haven't started animating yet
+            guard lineProgress > 0.0 else { continue }
             
-            let attributedString = NSAttributedString(string: phraseText, attributes: attributes)
-            
-            // Calculate text size
-            let textSize = attributedString.boundingRect(
-                with: CGSize(width: size.width * 0.84, height: size.height), // Match preview padding
-                options: [NSStringDrawingOptions.usesLineFragmentOrigin, NSStringDrawingOptions.usesFontLeading],
-                context: nil
-            ).size
-            
-            // Position text (centered horizontally, stacked vertically like preview)
-            // Note: Core Graphics has origin at bottom-left, so we need to adjust Y positioning
-            let yPosition = startY + CGFloat(phraseIndex) * fontSize * 1.2
-            let phraseRect = CGRect(
-                x: (size.width - textSize.width) / 2,
-                y: yPosition,
-                width: textSize.width,
-                height: textSize.height
+            // Create attributed string for this line
+            let lineAttributedString = NSAttributedString(
+                string: lineString,
+                attributes: [
+                    .font: font,
+                    .foregroundColor: UIColor(textColor).withAlphaComponent(lineOpacity)
+                ]
             )
             
-            print("MP4Exporter: Text positioned at (\(phraseRect.origin.x), \(phraseRect.origin.y)) with size \(textSize)")
+            // Calculate line position
+            let lineOrigin = lineOrigins[lineIndex]
+            let yPosition = baseStartY + CGFloat(lineIndex) * fontSize * 1.2
+            let lineRect = CGRect(
+                x: (size.width - textWidth) / 2 + lineOrigin.x,
+                y: yPosition,
+                width: textWidth,
+                height: fontSize * 1.2
+            )
             
-            // Render text using Core Graphics
+            // Render line with transform
             context.saveGState()
             
-            // For video rendering, we need to flip the Y coordinate since Core Graphics has origin at bottom-left
-            // but video frames expect origin at top-left
-            let line = CTLineCreateWithAttributedString(attributedString)
-            let videoY = size.height - phraseRect.origin.y - textSize.height
-            context.textPosition = CGPoint(x: phraseRect.origin.x, y: videoY)
+            // Apply line transform (slide up + slight scale)
+            let transformX = lineRect.origin.x + lineRect.width / 2
+            let transformY = size.height - lineRect.origin.y - lineRect.height / 2
+            
+            context.translateBy(x: transformX, y: transformY)
+            context.scaleBy(x: lineTransform.scale, y: lineTransform.scale)
+            context.translateBy(x: -transformX, y: -transformY + lineTransform.translateY)
+            
+            // Draw the line
+            let line = CTLineCreateWithAttributedString(lineAttributedString)
+            let videoY = size.height - lineRect.origin.y - lineRect.height
+            context.textPosition = CGPoint(x: lineRect.origin.x, y: videoY)
             CTLineDraw(line, context)
             
             context.restoreGState()
         }
+    }
+    
+    // MARK: - Per-Line Animation Helpers
+    
+    private func calculateLineOpacity(progress: Double) -> Double {
+        // Smooth fade-in with slight hold
+        if progress <= 0.3 {
+            return progress / 0.3 // Fade in over first 30%
+        } else if progress <= 0.8 {
+            return 1.0 // Hold at full opacity
+        } else {
+            // Optional: slight fade out at the end
+            return 1.0
+        }
+    }
+    
+    private func calculateLineTransform(progress: Double, slideDistance: CGFloat) -> (translateY: CGFloat, scale: Double) {
+        // Slide up effect with slight scale
+        let slideProgress = min(1.0, progress / 0.4) // Slide completes in first 40%
+        let translateY = -slideDistance * (1.0 - slideProgress)
         
-        // Cursor removed from exported videos for cleaner look
-        // (Cursor is only shown in preview for typewriter effect)
+        // Subtle scale effect
+        let scaleProgress = min(1.0, progress / 0.3) // Scale completes in first 30%
+        let scale = 0.95 + 0.05 * scaleProgress // Scale from 0.95 to 1.0
+        
+        return (translateY: translateY, scale: scale)
+    }
+    
+    // MARK: - Fast Fallback: Image-Reveal + Zoom Animation
+    
+    /// Fast alternative implementation using image-reveal + slight zoom (~10 LOC)
+    private func renderTextDirectlyFast(
+        context: CGContext,
+        phrases: [String],
+        phraseAnimations: [DeterministicAnimationEngine.PhraseAnimation],
+        preset: AnimationPreset,
+        size: CGSize,
+        t: Double
+    ) {
+        let fontSize = calculateOptimalFontSize(for: size)
+        let textColor = preset.customSettings.textColor ?? preset.template.tokens.primaryColor
+        
+        // Combine visible phrases
+        let visiblePhrases = phraseAnimations.enumerated().compactMap { index, phraseAnimation in
+            return phraseAnimation.isVisible && phraseAnimation.opacity > 0 ? phraseAnimation.text : nil
+        }
+        guard !visiblePhrases.isEmpty else { return }
+        
+        let combinedText = visiblePhrases.joined(separator: " ")
+        let font = UIFont.systemFont(ofSize: fontSize, weight: .bold)
+        
+        // Fast animation: simple fade + zoom
+        let opacity = min(1.0, t * 2.0) // Quick fade in
+        let scale = 0.9 + 0.1 * min(1.0, t * 3.0) // Slight zoom from 0.9 to 1.0
+        
+        // Render with transform
+        context.saveGState()
+        context.translateBy(x: size.width/2, y: size.height/2)
+        context.scaleBy(x: scale, y: scale)
+        context.translateBy(x: -size.width/2, y: -size.height/2)
+        
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: font,
+            .foregroundColor: UIColor(textColor).withAlphaComponent(opacity)
+        ]
+        let attributedString = NSAttributedString(string: combinedText, attributes: attributes)
+        let line = CTLineCreateWithAttributedString(attributedString)
+        
+        let textSize = attributedString.size()
+        let textRect = CGRect(
+            x: (size.width - textSize.width) / 2,
+            y: (size.height - textSize.height) / 2,
+            width: textSize.width,
+            height: textSize.height
+        )
+        
+        context.textPosition = CGPoint(x: textRect.origin.x, y: size.height - textRect.origin.y - textSize.height)
+        CTLineDraw(line, context)
+        context.restoreGState()
     }
     
     
