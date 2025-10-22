@@ -301,6 +301,8 @@ class IAPManager: ObservableObject {
                     }
                 }
             } catch {
+                // Handle error silently - this is expected in some cases
+                // The app will continue with cached entitlement status
             }
         }
         

@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import Combine
 
 
 /// Main home screen with text input and creation flow
@@ -14,6 +13,7 @@ struct HomeView: View {
     @EnvironmentObject var iapManager: IAPManager
     @EnvironmentObject var themeManager: ThemeManager
     @EnvironmentObject var settingsManager: SettingsManager
+    @EnvironmentObject var permissionManager: PermissionManager
     @State private var inputText: String = ""
     @State private var splitPreview: SplitPreview?
     @State private var showingOnboarding = false
@@ -21,10 +21,10 @@ struct HomeView: View {
     @State private var showingThemeSelection = false
     @State private var toastMessage: String = ""
     @State private var showingToast = false
-    @StateObject private var gifExporter = GIFExporter()
+    @StateObject private var mp4Exporter = MP4Exporter()
     @StateObject private var photoSaver = PhotoSaver()
     @State private var showingShareSheet = false
-    @State private var _exportedGIFURL: URL?
+    @State private var _exportedVideoURL: URL?
     @State private var previewKey: UUID = UUID() // Force preview refresh when theme changes
     @State private var autoSavedToPhotos = false
     @State private var showingProUpgrade = false
@@ -61,7 +61,7 @@ struct HomeView: View {
     
     private var exportButtonTitle: String {
         if inputText.isEmpty {
-            return "Enter text to create GIF"
+            return "Enter text to create video"
         }
         if isTextTooLong {
             return "Text too long"
@@ -69,7 +69,10 @@ struct HomeView: View {
         if !iapManager.canCreateMoreGIFs {
             return "Daily Limit Reached"
         }
-        if gifExporter.isExporting {
+        if !permissionManager.hasPhotoLibraryPermission {
+            return "Photos Permission Required"
+        }
+        if mp4Exporter.isExporting {
             return "Exporting..."
         }
         return "Export GIF"
@@ -83,10 +86,13 @@ struct HomeView: View {
             return "Reduce text length to continue"
         }
         if !iapManager.canCreateMoreGIFs {
-            return "Upgrade to Pro for unlimited GIFs"
+            return "Upgrade to Pro for unlimited videos"
         }
-        if gifExporter.isExporting {
-            return "Creating your animated GIF"
+        if !permissionManager.hasPhotoLibraryPermission {
+            return "Enable in Settings to save videos"
+        }
+        if mp4Exporter.isExporting {
+            return "Creating your animated video"
         }
         return "Save and share your creation"
     }
@@ -98,7 +104,10 @@ struct HomeView: View {
         if !iapManager.canCreateMoreGIFs {
             return Color.red
         }
-        return gifExporter.isExporting ? Color.orange : Color.blue
+        if !permissionManager.hasPhotoLibraryPermission {
+            return Color.orange
+        }
+        return mp4Exporter.isExporting ? Color.orange : Color.blue
     }
     
     // Classic typewriter preset
@@ -207,7 +216,7 @@ struct HomeView: View {
             }
             .onChange(of: animationSpeed) { oldSpeed, newSpeed in
                 // Speed changed - preview will automatically update due to duration change
-                let newDuration = DeterministicAnimationEngine.calculateGIFDuration(for: TextSplitter.split(inputText), speedMultiplier: newSpeed)
+                _ = DeterministicAnimationEngine.calculateVideoDuration(for: TextSplitter.split(inputText), speedMultiplier: newSpeed)
             }
             .onChange(of: themeManager.selectedTheme) { oldTheme, newTheme in
                 // Theme changed - force preview refresh
@@ -228,7 +237,7 @@ struct HomeView: View {
                 ThemeSelectionView(themeManager: themeManager)
             }
             .sheet(isPresented: $showingShareSheet) {
-                if let url = _exportedGIFURL {
+                if let url = _exportedVideoURL {
                     ShareSheet(activityItems: [url])
                 }
             }
@@ -240,9 +249,11 @@ struct HomeView: View {
                 if !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     FullScreenPreviewView(
                         phrases: TextSplitter.split(inputText),
-                        preset: currentPreset,
-                        duration: DeterministicAnimationEngine.calculateGIFDuration(for: TextSplitter.split(inputText), speedMultiplier: animationSpeed),
-                        speedMultiplier: animationSpeed
+                        animationType: DeterministicAnimationEngine.AnimationType.typewriter,
+                        duration: DeterministicAnimationEngine.calculateVideoDuration(for: TextSplitter.split(inputText), speedMultiplier: animationSpeed),
+                        backgroundColor: themeManager.effectiveBackgroundColor,
+                        textColor: themeManager.effectiveTextColor,
+                        fontStyle: FontStyle.system
                     )
                 }
             }
@@ -263,7 +274,7 @@ struct HomeView: View {
     
     private var headerView: some View {
         VStack(spacing: 16) {
-            Text("Transform your words into captivating animated GIFs")
+            Text("Transform your words into captivating animated videos")
                 .font(.title2)
                 .fontWeight(.medium)
                 .multilineTextAlignment(.center)
@@ -287,7 +298,7 @@ struct HomeView: View {
                         .foregroundColor(.yellow)
                         .font(.subheadline)
                     
-                    Text("Pro - Unlimited GIFs")
+                    Text("Pro - Unlimited Videos")
                         .font(.subheadline)
                         .fontWeight(.semibold)
                         .foregroundColor(.primary)
@@ -311,7 +322,7 @@ struct HomeView: View {
                             .font(.subheadline)
                         
                         if iapManager.remainingGIFsToday > 0 {
-                            Text("\(iapManager.remainingGIFsToday) GIFs left today")
+                            Text("\(iapManager.remainingGIFsToday) videos left today")
                                 .font(.subheadline)
                                 .fontWeight(.medium)
                                 .foregroundColor(.primary)
@@ -782,9 +793,11 @@ struct HomeView: View {
             
             PreviewView(
                 phrases: TextSplitter.split(inputText),
-                preset: currentPreset,
-                duration: DeterministicAnimationEngine.calculateGIFDuration(for: TextSplitter.split(inputText), speedMultiplier: animationSpeed),
-                speedMultiplier: animationSpeed
+                animationType: DeterministicAnimationEngine.AnimationType.typewriter,
+                duration: DeterministicAnimationEngine.calculateVideoDuration(for: TextSplitter.split(inputText), speedMultiplier: animationSpeed),
+                backgroundColor: themeManager.effectiveBackgroundColor,
+                textColor: themeManager.effectiveTextColor,
+                fontStyle: FontStyle.system
             )
             .id(previewKey)
             .frame(height: 420)
@@ -829,7 +842,7 @@ struct HomeView: View {
     private var exportSection: some View {
         VStack(alignment: .leading, spacing: 20) {
             HStack {
-                Text("Export Your GIF")
+                Text("Export Your Video")
                     .font(.headline)
                     .fontWeight(.semibold)
             }
@@ -840,24 +853,27 @@ struct HomeView: View {
                     if !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                         if !iapManager.canCreateMoreGIFs {
                             showingProUpgrade = true
+                        } else if !permissionManager.hasPhotoLibraryPermission {
+                            // Request permission or show settings alert
+                            requestPhotosPermission()
                         } else {
                             startExport()
                         }
                     }
                 }) {
                     HStack(spacing: 16) {
-                        if gifExporter.isExporting {
+                        if mp4Exporter.isExporting {
                             ProgressView()
                                 .progressViewStyle(CircularProgressViewStyle(tint: .white))
                                 .scaleEffect(0.9)
                         }
                         
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(gifExporter.isExporting ? "Exporting..." : exportButtonTitle)
+                            Text(mp4Exporter.isExporting ? "Exporting..." : exportButtonTitle)
                                 .font(.headline)
                                 .fontWeight(.bold)
                             
-                            Text(gifExporter.isExporting ? "Creating your animated GIF" : exportButtonSubtitle)
+                            Text(mp4Exporter.isExporting ? "Creating your animated video" : exportButtonSubtitle)
                                 .font(.caption)
                                 .opacity(0.9)
                         }
@@ -874,12 +890,43 @@ struct HomeView: View {
                             .shadow(color: exportButtonColor.opacity(0.3), radius: 8, x: 0, y: 4)
                     )
                 }
-                .disabled(inputText.isEmpty || gifExporter.isExporting || isTextTooLong || !iapManager.canCreateMoreGIFs)
-                .scaleEffect((inputText.isEmpty || gifExporter.isExporting || isTextTooLong || !iapManager.canCreateMoreGIFs) ? 0.98 : 1.0)
-                .animation(.easeInOut(duration: 0.3), value: gifExporter.isExporting)
+                .disabled(inputText.isEmpty || mp4Exporter.isExporting || isTextTooLong || !iapManager.canCreateMoreGIFs || !permissionManager.hasPhotoLibraryPermission)
+                .scaleEffect((inputText.isEmpty || mp4Exporter.isExporting || isTextTooLong || !iapManager.canCreateMoreGIFs || !permissionManager.hasPhotoLibraryPermission) ? 0.98 : 1.0)
+                .animation(.easeInOut(duration: 0.3), value: mp4Exporter.isExporting)
             
+                // Permission status indicator
+                if !permissionManager.hasPhotoLibraryPermission {
+                    HStack(spacing: 12) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(.orange)
+                            .font(.system(size: 16))
+                        
+                        Text("Photos permission required to export videos")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                        
+                        Spacer()
+                        
+                        Button("Grant Access") {
+                            requestPhotosPermission()
+                        }
+                        .font(.caption)
+                        .foregroundColor(.blue)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color.orange.opacity(0.1))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.orange.opacity(0.3), lineWidth: 1)
+                            )
+                    )
+                }
+                
                 // Export progress
-                if gifExporter.isExporting {
+                if mp4Exporter.isExporting {
                     VStack(spacing: 16) {
                         // Enhanced progress bar
                         VStack(spacing: 8) {
@@ -887,17 +934,17 @@ struct HomeView: View {
                                 Image(systemName: "clock")
                                     .font(.caption)
                                     .foregroundColor(.orange)
-                                Text("Creating your GIF...")
+                                Text("Creating your video...")
                                     .font(.subheadline)
                                     .fontWeight(.medium)
                                 Spacer()
-                                Text("\(Int(gifExporter.exportProgress * 100))%")
+                                Text("\(Int(mp4Exporter.exportProgress * 100))%")
                                     .font(.subheadline)
                                     .fontWeight(.bold)
                                     .foregroundColor(.orange)
                             }
                             
-                            ProgressView(value: gifExporter.exportProgress)
+                            ProgressView(value: mp4Exporter.exportProgress)
                                 .progressViewStyle(LinearProgressViewStyle(tint: .orange))
                                 .frame(height: 8)
                                 .background(Color(.systemGray5))
@@ -906,19 +953,19 @@ struct HomeView: View {
                         
                         // Progress details
                         HStack {
-                            Text("Frame \(gifExporter.currentFrame) of \(gifExporter.totalFrames)")
+                            Text("Frame \(mp4Exporter.currentFrame) of \(mp4Exporter.totalFrames)")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                             
                             Spacer()
                             
                             // Estimated time remaining
-                            if gifExporter.estimatedTimeRemaining > 0 {
+                            if mp4Exporter.estimatedTimeRemaining > 0 {
                                 HStack(spacing: 4) {
                                     Image(systemName: "timer")
                                         .font(.caption)
                                         .foregroundColor(.secondary)
-                                    Text("~\(Int(gifExporter.estimatedTimeRemaining))s left")
+                                    Text("~\(Int(mp4Exporter.estimatedTimeRemaining))s left")
                                         .font(.caption)
                                         .foregroundColor(.secondary)
                                 }
@@ -986,7 +1033,7 @@ struct HomeView: View {
                 }
                 
                 // Export completed message
-                if let exportedURL = _exportedGIFURL, !gifExporter.isExporting {
+                if _exportedVideoURL != nil, !mp4Exporter.isExporting {
                     VStack(spacing: 16) {
                         HStack {
                             Image(systemName: "checkmark.circle.fill")
@@ -1180,6 +1227,20 @@ struct HomeView: View {
     
     // MARK: - Helper Methods
     
+    private func requestPhotosPermission() {
+        Task {
+            let granted = await permissionManager.requestPhotoLibraryPermission()
+            
+            await MainActor.run {
+                if granted {
+                    showToast("Photos permission granted! You can now export GIFs.")
+                } else {
+                    showToast("Photos permission is required to save GIFs.")
+                }
+            }
+        }
+    }
+    
     private func showToast(_ message: String) {
         toastMessage = message
         showingToast = true
@@ -1222,36 +1283,33 @@ struct HomeView: View {
             return 
         }
         
-        // Check if user can create more GIFs
+        // Check if user can create more videos
         guard iapManager.canCreateMoreGIFs else {
-            showToast("Daily limit reached! Upgrade to Pro for unlimited GIFs.")
+            showToast("Daily limit reached! Upgrade to Pro for unlimited videos.")
             return
         }
         
-        showToast("Starting GIF export...")
+        showToast("Starting video export...")
         
         let phrases = TextSplitter.split(inputText)
-        let duration = DeterministicAnimationEngine.calculateGIFDuration(for: phrases, speedMultiplier: animationSpeed)
+        let duration = DeterministicAnimationEngine.calculateVideoDuration(for: phrases, speedMultiplier: animationSpeed)
         
-        let exportConfig = GIFExporter.ExportConfiguration(
+        let exportConfig = MP4Exporter.MP4ExportConfiguration(
             phrases: phrases,
             preset: currentPreset,
             duration: duration,
-            fps: currentPreset.template.defaultFPS,
-            size: CGSize(width: 1080, height: 1080),
-            quality: .optimized,
             includeWatermark: true // Always include watermark for branding
         )
         
-        gifExporter.exportGIF(config: exportConfig) { result in
+        mp4Exporter.exportMP4(config: exportConfig) { result in
             DispatchQueue.main.async {
                 switch result {
                 case .success(let url):
-                    // Record GIF creation for daily limit tracking
+                    // Record video creation for daily limit tracking
                     self.iapManager.recordGIFCreation()
                     
-                    self._exportedGIFURL = url
-                    self.showToast("GIF exported successfully! Ready to share.")
+                    self._exportedVideoURL = url
+                    self.showToast("Video exported successfully! Ready to share.")
                     
                     // Auto-save to Photos if enabled
                     if self.settingsManager.isAutoSaveEnabled {
@@ -1265,12 +1323,12 @@ struct HomeView: View {
     }
     
     private func saveToPhotos() {
-        guard let gifURL = _exportedGIFURL else { return }
+        guard let videoURL = _exportedVideoURL else { return }
         
-        photoSaver.saveToPhotos(gifURL: gifURL) { result in
+        photoSaver.saveToPhotos(videoURL: videoURL) { result in
             switch result {
             case .success:
-                self.showToast("GIF saved to Photos!")
+                self.showToast("Video saved to Photos!")
             case .failure(let error):
                 self.showToast("Failed to save to Photos: \(error.localizedDescription)")
             }
@@ -1278,9 +1336,9 @@ struct HomeView: View {
     }
     
     private func autoSaveToPhotos() {
-        guard let gifURL = _exportedGIFURL else { return }
+        guard let videoURL = _exportedVideoURL else { return }
         
-        photoSaver.autoSaveToPhotos(gifURL: gifURL) { result in
+        photoSaver.autoSaveToPhotos(videoURL: videoURL) { result in
             switch result {
             case .success:
                 self.autoSavedToPhotos = true

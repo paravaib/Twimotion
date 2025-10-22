@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import Combine
 
 /// Export view with quality settings, progress tracking, and sharing options
 struct ExportView: View {
@@ -17,25 +16,23 @@ struct ExportView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var settingsManager: SettingsManager
     @EnvironmentObject var permissionManager: PermissionManager
-    @StateObject private var gifExporter = GIFExporter()
+    @StateObject private var mp4Exporter = MP4Exporter()
     @StateObject private var photoSaver = PhotoSaver()
     @State private var includeWatermark = true // Always true for branding
     @State private var showingShareSheet = false
-    @State private var exportedGIFURL: URL?
+    @State private var exportedVideoURL: URL?
     @State private var exportCompleted = false
     @State private var exportedFileSize: String = ""
     @State private var autoSavedToPhotos = false
     
-    private var exportConfig: GIFExporter.ExportConfiguration {
-        let dynamicDuration = DeterministicAnimationEngine.calculateGIFDuration(for: phrases, speedMultiplier: speedMultiplier)
+    private var mp4ExportConfig: MP4Exporter.MP4ExportConfiguration {
+        let dynamicDuration = DeterministicAnimationEngine.calculateVideoDuration(for: phrases, speedMultiplier: speedMultiplier)
         
-        return GIFExporter.ExportConfiguration(
+        // Use the same preset that was used for preview to ensure consistency
+        return MP4Exporter.MP4ExportConfiguration(
             phrases: phrases,
             preset: preset,
             duration: dynamicDuration,
-            fps: preset.template.defaultFPS,
-            size: CGSize(width: 1080, height: 1080), // Optimized for X platform
-            quality: .optimized,
             includeWatermark: includeWatermark
         )
     }
@@ -66,7 +63,7 @@ struct ExportView: View {
                     Spacer()
                     
                     // Progress view (when exporting)
-                    if gifExporter.isExporting {
+                    if mp4Exporter.isExporting {
                         progressView
                     }
                     
@@ -91,7 +88,7 @@ struct ExportView: View {
                 UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
             }
             .sheet(isPresented: $showingShareSheet) {
-                if let url = exportedGIFURL {
+                if let url = exportedVideoURL {
                     ShareSheet(activityItems: [url])
                 }
             }
@@ -108,11 +105,11 @@ struct ExportView: View {
     private var exportButton: some View {
         Button(action: startExport) {
             VStack(spacing: 6) {
-                Text(gifExporter.isExporting ? "Exporting..." : "Export GIF")
+                Text(mp4Exporter.isExporting ? "Exporting..." : "Export Video")
                     .font(.system(size: 18, weight: .bold))
                     .foregroundColor(.white)
                 
-                Text("Save and share your creation.")
+                Text("High-quality MP4 export with H.264 codec.")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.white.opacity(0.8))
             }
@@ -124,27 +121,27 @@ struct ExportView: View {
                     .fill(Color.blue)
                     .shadow(color: .blue.opacity(0.2), radius: 8, x: 0, y: 4)
             )
-            .scaleEffect(gifExporter.isExporting ? 0.98 : 1.0)
-            .animation(.easeInOut(duration: 0.2), value: gifExporter.isExporting)
+            .scaleEffect(mp4Exporter.isExporting ? 0.98 : 1.0)
+            .animation(.easeInOut(duration: 0.2), value: mp4Exporter.isExporting)
         }
-        .disabled(gifExporter.isExporting)
+        .disabled(mp4Exporter.isExporting)
     }
     
     private var progressView: some View {
         VStack(spacing: 16) {
             // Progress bar
-            ProgressView(value: gifExporter.exportProgress)
+            ProgressView(value: mp4Exporter.exportProgress)
                 .progressViewStyle(LinearProgressViewStyle(tint: Color(red: 0.2, green: 1.0, blue: 0.2)))
                 .scaleEffect(y: 2)
             
             // Progress text with ETA
             VStack(spacing: 4) {
-                Text("Exporting GIF...")
+                Text("Exporting MP4 Video...")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.white.opacity(0.8))
                 
-                if gifExporter.estimatedTimeRemaining > 0 {
-                    Text("ETA: \(timeString(from: gifExporter.estimatedTimeRemaining))")
+                if mp4Exporter.estimatedTimeRemaining > 0 {
+                    Text("ETA: \(timeString(from: mp4Exporter.estimatedTimeRemaining))")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.white.opacity(0.6))
                 }
@@ -168,7 +165,7 @@ struct ExportView: View {
                     .foregroundColor(.white)
                 
                 if !exportedFileSize.isEmpty {
-                    Text("Size: \(exportedFileSize) • 1080×1080")
+                    Text("Size: \(exportedFileSize) • 1080×1080 • MP4")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(.white.opacity(0.7))
                 }
@@ -231,11 +228,12 @@ struct ExportView: View {
         // Reset file size
         exportedFileSize = ""
         
-        gifExporter.exportGIF(config: exportConfig) { result in
+        // Use MP4 export
+        mp4Exporter.exportMP4(config: mp4ExportConfig) { result in
             DispatchQueue.main.async {
                 switch result {
                 case .success(let url):
-                    self.exportedGIFURL = url
+                    self.exportedVideoURL = url
                     self.exportCompleted = true
                     
                     // Calculate and display file size
@@ -246,7 +244,6 @@ struct ExportView: View {
                         self.autoSaveToPhotos()
                     }
                 case .failure(let error):
-                    
                     // Show error alert or toast
                     self.showExportError(error.localizedDescription)
                 }
@@ -278,7 +275,7 @@ struct ExportView: View {
     
     
     private func saveToPhotos() {
-        guard let url = exportedGIFURL else { return }
+        guard let url = exportedVideoURL else { return }
         
         // Check permission first
         if !permissionManager.hasPhotoLibraryPermission {
@@ -296,30 +293,33 @@ struct ExportView: View {
     }
     
     private func performSaveToPhotos(url: URL) {
-        photoSaver.saveToPhotos(gifURL: url) { result in
+        photoSaver.saveToPhotos(videoURL: url) { result in
             switch result {
             case .success:
                 // Auto-close the export view after successful save
                 dismiss()
             case .failure(let error):
-                // Handle error
+                // Handle error - could show an alert or toast here
+                print("Failed to save to photos: \(error.localizedDescription)")
             }
         }
     }
     
     private func autoSaveToPhotos() {
-        guard let url = exportedGIFURL else { return }
+        guard let url = exportedVideoURL else { return }
         
         // Only auto-save if permission is granted
         guard permissionManager.hasPhotoLibraryPermission else {
             return
         }
         
-        photoSaver.autoSaveToPhotos(gifURL: url) { result in
+        photoSaver.autoSaveToPhotos(videoURL: url) { result in
             switch result {
             case .success:
                 self.autoSavedToPhotos = true
             case .failure(let error):
+                // Handle auto-save error - could log or show notification
+                print("Failed to auto-save to photos: \(error.localizedDescription)")
             }
         }
     }

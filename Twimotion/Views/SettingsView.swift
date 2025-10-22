@@ -286,14 +286,24 @@ struct SettingsView: View {
                 Spacer()
                 
                 if !permissionManager.hasPhotoLibraryPermission {
-                    Button(action: {
-                        Task {
-                            await permissionManager.requestPhotoLibraryPermission()
+                    VStack(spacing: 8) {
+                        Button(action: {
+                            Task {
+                                await permissionManager.requestPhotoLibraryPermission()
+                            }
+                        }) {
+                            Text("Grant Access")
+                                .font(.caption)
+                                .foregroundColor(.blue)
                         }
-                    }) {
-                        Text("Grant Access")
-                            .font(.caption)
-                            .foregroundColor(.blue)
+                        
+                        Button(action: {
+                            permissionManager.openAppSettings()
+                        }) {
+                            Text("Open Settings")
+                                .font(.caption)
+                                .foregroundColor(.orange)
+                        }
                     }
                 } else {
                     Button(action: {
