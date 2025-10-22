@@ -553,6 +553,8 @@ class IAPManager: ObservableObject {
                 let transaction = try checkVerified(result)
                 await updateProStatus(transaction)
             } catch {
+                // Handle verification errors silently
+                print("Transaction verification failed: \(error)")
             }
         }
         
@@ -563,6 +565,8 @@ class IAPManager: ObservableObject {
                 await updateProStatus(transaction)
                 await transaction.finish()
             } catch {
+                // Handle verification errors silently
+                print("Pending transaction verification failed: \(error)")
             }
         }
         

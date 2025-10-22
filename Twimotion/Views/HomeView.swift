@@ -140,33 +140,27 @@ struct HomeView: View {
     
     var body: some View {
         NavigationView {
-            ScrollView {
-                LazyVStack(spacing: 24) {
-                    // Header
-                    headerView
+            VStack(spacing: 0) {
+                // Clean header
+                cleanHeader
+                
+                // Main content
+                VStack(spacing: 20) {
+                    // Text input with enhance button
+                    textInputWithEnhance
                     
-                    // Speed control
-                    speedControlSection
+                    // Style/Theme buttons
+                    styleButtons
                     
-                    // Manual settings section
-                    manualSettingsSection
-                    
-                    // Text input section
-                    textInputSection
-                    
-                    // Animation preview
+                    // Preview button
                     if !inputText.isEmpty {
-                        animationPreviewSection
-                    }
-                    
-                    // Export section
-                    if !inputText.isEmpty {
-                        exportSection
+                        previewButton
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
-                .padding(.bottom, 24)
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
+                
+                Spacer()
             }
             .background(
                 LinearGradient(
@@ -253,8 +247,12 @@ struct HomeView: View {
                         duration: DeterministicAnimationEngine.calculateVideoDuration(for: TextSplitter.split(inputText), speedMultiplier: animationSpeed),
                         backgroundColor: themeManager.effectiveBackgroundColor,
                         textColor: themeManager.effectiveTextColor,
-                        fontStyle: FontStyle.system
+                        fontStyle: FontStyle.system,
+                        speedMultiplier: animationSpeed
                     )
+                    .environmentObject(iapManager)
+                    .environmentObject(permissionManager)
+                    .environmentObject(settingsManager)
                 }
             }
             .overlay(
@@ -270,189 +268,137 @@ struct HomeView: View {
         }
     }
     
-    // MARK: - Header View
+    // MARK: - Clean Header
     
-    private var headerView: some View {
-        VStack(spacing: 16) {
-            Text("Transform your words into captivating animated videos")
-                .font(.title2)
-                .fontWeight(.medium)
-                .multilineTextAlignment(.center)
+    private var cleanHeader: some View {
+        VStack(spacing: 8) {
+            Text("Twimotion")
+                .font(.largeTitle)
+                .fontWeight(.bold)
                 .foregroundColor(.primary)
-                .padding(.horizontal, 20)
             
-            // Daily limit status
-            dailyLimitStatusView
+            Text("Transform your words into scroll-stopping videos.")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
         }
-        .padding(.vertical, 12)
+        .padding(.horizontal, 20)
+        .padding(.top, 8)
     }
     
-    // MARK: - Daily Limit Status View
     
-    private var dailyLimitStatusView: some View {
+    // MARK: - Control Buttons
+    
+    private var styleButtons: some View {
         HStack(spacing: 12) {
-            if iapManager.isProUser {
-                // Pro user status
-                HStack(spacing: 8) {
-                    Image(systemName: "crown.fill")
-                        .foregroundColor(.yellow)
-                        .font(.subheadline)
-                    
-                    Text("Pro - Unlimited Videos")
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.primary)
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color.yellow.opacity(0.1))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color.yellow.opacity(0.3), lineWidth: 1)
-                        )
-                )
-            } else {
-                // Free user status
-                VStack(spacing: 4) {
+            // Theme button
+            VStack(spacing: 8) {
+                Text("Theme")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                Button(action: {
+                    showingThemeSelection = true
+                }) {
                     HStack(spacing: 8) {
-                        Image(systemName: "gift.fill")
-                            .foregroundColor(.blue)
-                            .font(.subheadline)
+                        Image(systemName: "paintpalette")
+                            .font(.title3)
+                            .foregroundColor(.white)
                         
-                        if iapManager.remainingGIFsToday > 0 {
-                            Text("\(iapManager.remainingGIFsToday) videos left today")
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                                .foregroundColor(.primary)
-                        } else {
-                            Text("Daily limit reached")
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                                .foregroundColor(.red)
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(themeManager.effectiveBackgroundColor)
+                                .frame(width: 12, height: 12)
+                            Circle()
+                                .fill(themeManager.effectiveTextColor)
+                                .frame(width: 12, height: 12)
                         }
                     }
-                    
-                    // Countdown timer
-                    HStack(spacing: 4) {
-                        Image(systemName: "clock.fill")
-                            .foregroundColor(.secondary)
-                            .font(.caption)
-                        
-                        Text("Resets in \(iapManager.formattedTimeUntilReset)")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    .id(countdownUpdateTrigger) // Force update when timer triggers
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color(.systemGray5))
+                    )
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(iapManager.remainingGIFsToday > 0 ? Color.blue.opacity(0.1) : Color.red.opacity(0.1))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(iapManager.remainingGIFsToday > 0 ? Color.blue.opacity(0.3) : Color.red.opacity(0.3), lineWidth: 1)
-                        )
-                )
+                .buttonStyle(PlainButtonStyle())
+            }
+            
+            // Speed button
+            VStack(spacing: 8) {
+                Text("Speed")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
                 
-                // Upgrade button
-                if iapManager.remainingGIFsToday == 0 {
-                    Button(action: {
-                        showingProUpgrade = true
-                    }) {
-                        Text("Upgrade")
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(Color.blue)
-                            )
-                    }
+                speedDropdownButton
+            }
+            
+            // Clear button
+            VStack(spacing: 8) {
+                Text("Clear")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                Button(action: clearText) {
+                    Image(systemName: "xmark.circle")
+                        .font(.title3)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(.red)
+                        )
                 }
+                .buttonStyle(PlainButtonStyle())
             }
         }
     }
     
-    // MARK: - Speed Control Section
     
-    private var speedControlSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Image(systemName: "speedometer")
-                    .foregroundColor(.blue)
-                    .font(.title3)
-                Text("Animation Speed")
-                    .font(.headline)
-                    .fontWeight(.semibold)
-            }
-            
-            VStack(spacing: 16) {
-                // Speed slider with enhanced styling
-                VStack(spacing: 8) {
+    private var speedDropdownButton: some View {
+        Menu {
+            ForEach(speedOptions, id: \.value) { option in
+                Button(action: {
+                    animationSpeed = option.value
+                }) {
                     HStack {
-                        Image(systemName: "tortoise")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        Text("Slow")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        
-                        Spacer()
-                        
-                        Text("Fast")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        Image(systemName: "hare")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                        Text(option.label)
+                        if animationSpeed == option.value {
+                            Image(systemName: "checkmark")
+                        }
                     }
-                    
-                    Slider(value: $animationSpeed, in: 0.5...2.0, step: 0.1)
-                        .accentColor(.blue)
-                        .background(
-                            RoundedRectangle(cornerRadius: 4)
-                                .fill(Color(.systemGray5))
-                                .frame(height: 6)
-                        )
-                }
-                
-                // Enhanced speed indicator
-                HStack {
-                    Spacer()
-                    HStack(spacing: 8) {
-                        Image(systemName: speedIcon)
-                            .font(.caption)
-                            .foregroundColor(.blue)
-                        Text(speedLabel)
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.blue)
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color.blue.opacity(0.1))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .stroke(Color.blue.opacity(0.2), lineWidth: 1)
-                            )
-                    )
-                    .animation(.easeInOut(duration: 0.3), value: animationSpeed)
                 }
             }
-            .padding(20)
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "speedometer")
+                    .font(.title3)
+                    .foregroundColor(.white)
+                
+                Image(systemName: "chevron.down")
+                    .font(.caption)
+                    .foregroundColor(.white)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
             .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(Color(.systemBackground))
-                    .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 4)
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color(.systemGray5))
             )
         }
+    }
+    
+    // Speed options for dropdown
+    private var speedOptions: [(label: String, value: Double)] {
+        [
+            ("0.5x", 0.5),
+            ("0.75x", 0.75),
+            ("1x", 1.0),
+            ("1.25x", 1.25),
+            ("1.5x", 1.5),
+            ("2x", 2.0)
+        ]
     }
     
     private var speedIcon: String {
@@ -485,356 +431,92 @@ struct HomeView: View {
         }
     }
     
-    // MARK: - Manual Settings Section
     
-    private var manualSettingsSection: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            HStack {
-                Image(systemName: "paintpalette")
-                    .foregroundColor(.purple)
-                    .font(.title3)
-                Text("Customize Style")
-                    .font(.headline)
-                    .fontWeight(.semibold)
-            }
+    
+    // MARK: - Text Input with Enhance Button
+    
+    private var textInputWithEnhance: some View {
+        ZStack(alignment: .topLeading) {
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.systemGray6))
+                .frame(height: 140)
             
-            VStack(spacing: 24) {
-                // Theme selection
-                themeSelectionSection
-                
-                // Advanced customization (only show if custom theme is selected)
-                if themeManager.selectedTheme.isCustom {
-                    advancedCustomizationSection
+            VStack(alignment: .leading, spacing: 0) {
+                if inputText.isEmpty {
+                    HStack {
+                        Text("💡")
+                            .font(.title3)
+                        Text("Write your idea...")
+                            .font(.body)
+                            .foregroundColor(.secondary)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 20)
                 }
+                
+                TextEditor(text: $inputText)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 16)
+                    .background(Color.clear)
+                    .font(.body)
+                    .onChange(of: inputText) {
+                        updateSplitPreview()
+                    }
+                
+                HStack {
+                    characterCounterView
+                    Spacer()
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 16)
             }
-            .padding(24)
-            .background(
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(Color(.systemBackground))
-                    .shadow(color: .black.opacity(0.05), radius: 12, x: 0, y: 6)
-            )
         }
     }
     
-    // MARK: - Theme Selection Section
     
-    private var themeSelectionSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Image(systemName: "star.fill")
-                    .foregroundColor(.orange)
-                    .font(.subheadline)
-                Text("Theme")
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-            }
-            
-            Button(action: {
-                showingThemeSelection = true
-            }) {
-                HStack(spacing: 16) {
-                    // Theme preview
-                    HStack(spacing: 8) {
-                        Circle()
-                            .fill(themeManager.effectiveBackgroundColor)
-                            .frame(width: 24, height: 24)
-                        
-                        Circle()
-                            .fill(themeManager.effectiveTextColor)
-                            .frame(width: 24, height: 24)
-                    }
+    
+    // MARK: - Preview Button
+    
+    private var previewButton: some View {
+        Button(action: {
+            showingFullScreenPreview = true
+        }) {
+            HStack(spacing: 12) {
+                Image(systemName: "play.circle.fill")
+                    .font(.title2)
+                    .foregroundColor(.white)
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Preview Animation")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white)
                     
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(themeManager.selectedTheme.name)
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.primary)
-                        
-                        Text(themeManager.selectedTheme.description)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        
-                        Text("Colors: \(themeManager.effectiveBackgroundColor.toHex()) / \(themeManager.effectiveTextColor.toHex())")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    Spacer()
-                    
-                    Image(systemName: "chevron.right")
+                    Text("Tap to turn your words into motion.")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.white.opacity(0.8))
                 }
-                .padding(16)
-                .background(
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color(.systemGray6))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(themeManager.effectiveTextColor.opacity(0.3), lineWidth: 1)
-                        )
-                )
-            }
-            .buttonStyle(PlainButtonStyle())
-        }
-    }
-    
-    
-    // MARK: - Advanced Customization Section
-    
-    private var advancedCustomizationSection: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            HStack {
-                Image(systemName: "slider.horizontal.3")
-                    .foregroundColor(.green)
-                    .font(.subheadline)
-                Text("Advanced Customization")
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-            }
-            
-            VStack(spacing: 16) {
-                // Background color control
-                colorControlRow(
-                    title: "Background",
-                    color: $themeManager.customBackgroundColor,
-                    icon: "paintpalette",
-                    iconColor: .green
-                )
-                
-                // Text color control
-                colorControlRow(
-                    title: "Text",
-                    color: $themeManager.customTextColor,
-                    icon: "textformat",
-                    iconColor: .orange
-                )
-            }
-        }
-    }
-    
-    private func colorControlRow(title: String, color: Binding<Color>, icon: String, iconColor: Color) -> some View {
-        HStack(spacing: 16) {
-            Image(systemName: icon)
-                .foregroundColor(iconColor)
-                .font(.subheadline)
-                .frame(width: 20)
-            
-            Text(title)
-                .font(.subheadline)
-                .fontWeight(.medium)
-                .frame(width: 80, alignment: .leading)
-            
-            Spacer()
-            
-            ColorPicker("", selection: color, supportsOpacity: false)
-                .frame(width: 44, height: 44)
-                .background(
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(color.wrappedValue)
-                        .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
-                )
-        }
-        .padding(.vertical, 8)
-    }
-    
-    // MARK: - Text Input Section
-    
-    private var textInputSection: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            HStack {
-                Image(systemName: "text.bubble")
-                    .foregroundColor(.cyan)
-                    .font(.title3)
-                Text("Enter Your Text")
-                    .font(.headline)
-                    .fontWeight(.semibold)
-            }
-            
-            VStack(spacing: 16) {
-                // Action buttons
-                HStack(spacing: 16) {
-                    Button(action: pasteFromClipboard) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "doc.on.clipboard")
-                                .font(.subheadline)
-                            Text("Paste")
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                        }
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 12)
-                        .background(
-                            Capsule()
-                                .fill(Color.blue)
-                        )
-                    }
-                    
-                    Spacer()
-                    
-                    Button(action: clearText) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "xmark.circle")
-                                .font(.subheadline)
-                            Text("Clear")
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                        }
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 12)
-                        .background(
-                            Capsule()
-                                .fill(Color.gray)
-                        )
-                    }
-                }
-                
-                // Enhanced text input area
-                ZStack(alignment: .topLeading) {
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(Color(.systemBackground))
-                        .frame(minHeight: 140)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 20)
-                                .stroke(
-                                    LinearGradient(
-                                        gradient: Gradient(colors: [Color.blue.opacity(0.3), Color.purple.opacity(0.3)]),
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    ),
-                                    lineWidth: 2
-                                )
-                        )
-                        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 4)
-                    
-                    if inputText.isEmpty {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Start typing your message...")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                                .padding(.horizontal, 24)
-                                .padding(.top, 24)
-                            
-                            Text("Tips: Use line breaks for better formatting")
-                                .font(.caption)
-                                .foregroundColor(.secondary.opacity(0.7))
-                                .padding(.horizontal, 24)
-                        }
-                    }
-                    
-                    TextEditor(text: $inputText)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 16)
-                        .background(Color.clear)
-                        .font(.body)
-                        .onChange(of: inputText) {
-                            updateSplitPreview()
-                        }
-                        .overlay(
-                            // Character counter overlay
-                            VStack {
-                                Spacer()
-                                HStack {
-                                    Spacer()
-                                    characterCounterView
-                                        .padding(.trailing, 16)
-                                        .padding(.bottom, 16)
-                                }
-                            }
-                        )
-                }
-            }
-            .padding(24)
-            .background(
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(Color(.systemBackground))
-                    .shadow(color: .black.opacity(0.05), radius: 12, x: 0, y: 6)
-            )
-        }
-    }
-    
-    
-    
-    // MARK: - Animation Preview Section
-    
-    private var animationPreviewSection: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            HStack {
-                Image(systemName: "play.rectangle")
-                    .foregroundColor(.indigo)
-                    .font(.title3)
-                Text("Live Preview")
-                    .font(.headline)
-                    .fontWeight(.semibold)
                 
                 Spacer()
-                
-                Button(action: {
-                    showingFullScreenPreview = true
-                }) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "arrow.up.left.and.arrow.down.right")
-                            .font(.caption)
-                        Text("Full Screen")
-                            .font(.caption)
-                            .fontWeight(.medium)
-                    }
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(
-                        Capsule()
-                            .fill(Color.indigo)
-                    )
-                }
             }
-            
-            PreviewView(
-                phrases: TextSplitter.split(inputText),
-                animationType: DeterministicAnimationEngine.AnimationType.typewriter,
-                duration: DeterministicAnimationEngine.calculateVideoDuration(for: TextSplitter.split(inputText), speedMultiplier: animationSpeed),
-                backgroundColor: themeManager.effectiveBackgroundColor,
-                textColor: themeManager.effectiveTextColor,
-                fontStyle: FontStyle.system
-            )
-            .id(previewKey)
-            .frame(height: 420)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
             .background(
-                RoundedRectangle(cornerRadius: 24)
+                RoundedRectangle(cornerRadius: 16)
                     .fill(
                         LinearGradient(
                             gradient: Gradient(colors: [
-                                Color.indigo.opacity(0.1),
-                                Color.purple.opacity(0.1),
-                                Color.pink.opacity(0.05)
+                                .purple,
+                                .pink
                             ]),
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
+                            startPoint: .leading,
+                            endPoint: .trailing
                         )
                     )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 24)
-                            .stroke(
-                                LinearGradient(
-                                    gradient: Gradient(colors: [Color.indigo.opacity(0.3), Color.purple.opacity(0.3)]),
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 1
-                            )
-                    )
-                    .shadow(color: .indigo.opacity(0.2), radius: 12, x: 0, y: 6)
             )
-            .cornerRadius(24)
-            .onTapGesture {
-                showingFullScreenPreview = true
-            }
-            .onAppear {
-                showToast("Preview ready! Speed: \(speedLabel) • Tap to view full screen")
-            }
         }
+        .buttonStyle(PlainButtonStyle())
     }
     
     // MARK: - Export Section
@@ -1166,63 +848,9 @@ struct HomeView: View {
     // MARK: - Character Counter View
     
     private var characterCounterView: some View {
-        VStack(spacing: 4) {
-            if isTextTooLong {
-                // Error state - text too long
-                HStack(spacing: 4) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundColor(.red)
-                        .font(.caption)
-                    Text("\(characterCount)/\(maxCharacters)")
-                        .font(.caption)
-                        .fontWeight(.bold)
-                        .foregroundColor(.red)
-                }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(Color.red.opacity(0.1))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 6)
-                        .stroke(Color.red.opacity(0.3), lineWidth: 1)
-                )
-            } else if shouldShowWarning {
-                // Warning state - approaching limit
-                HStack(spacing: 4) {
-                    Image(systemName: "exclamationmark.triangle")
-                        .foregroundColor(.orange)
-                        .font(.caption)
-                    Text("\(remainingCharacters) left")
-                        .font(.caption)
-                        .fontWeight(.medium)
-                        .foregroundColor(.orange)
-                }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(Color.orange.opacity(0.1))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 6)
-                        .stroke(Color.orange.opacity(0.3), lineWidth: 1)
-                )
-            } else {
-                // Normal state
-                Text("\(characterCount)/\(maxCharacters)")
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(Color(.systemGray6))
-                    )
-            }
-        }
+        Text("\(characterCount) / \(maxCharacters)")
+            .font(.caption)
+            .foregroundColor(.secondary)
     }
     
     // MARK: - Helper Methods
