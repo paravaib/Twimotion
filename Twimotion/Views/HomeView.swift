@@ -204,12 +204,10 @@ struct HomeView: View {
             .onChange(of: animationSpeed) { oldSpeed, newSpeed in
                 // Speed changed - preview will automatically update due to duration change
                 let newDuration = DeterministicAnimationEngine.calculateGIFDuration(for: TextSplitter.split(inputText), speedMultiplier: newSpeed)
-                print("DEBUG: Animation speed changed from \(oldSpeed) to \(newSpeed), new duration: \(newDuration)")
             }
             .onChange(of: themeManager.selectedTheme) { oldTheme, newTheme in
                 // Theme changed - force preview refresh
                 previewKey = UUID()
-                print("DEBUG: Theme changed from \(oldTheme.name) to \(newTheme.name)")
             }
             .onChange(of: iapManager.isProUser) { oldValue, newValue in
                 // Pro status changed - restart timer
@@ -1217,18 +1215,15 @@ struct HomeView: View {
     
     private func startExport() {
         guard !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { 
-            print("DEBUG: Export blocked - no text entered")
             return 
         }
         
         // Check if user can create more GIFs
         guard iapManager.canCreateMoreGIFs else {
-            print("DEBUG: Export blocked - daily limit reached")
             showToast("Daily limit reached! Upgrade to Pro for unlimited GIFs.")
             return
         }
         
-        print("DEBUG: Starting export - text: '\(inputText)', canCreateMoreGIFs: \(iapManager.canCreateMoreGIFs)")
         showToast("Starting GIF export...")
         
         let phrases = TextSplitter.split(inputText)
@@ -1255,16 +1250,11 @@ struct HomeView: View {
                     self.showToast("GIF exported successfully! Ready to share.")
                     
                     // Auto-save to Photos if enabled
-                    print("DEBUG: Auto-save enabled: \(self.settingsManager.isAutoSaveEnabled)")
                     if self.settingsManager.isAutoSaveEnabled {
-                        print("DEBUG: Starting auto-save to Photos...")
                         self.autoSaveToPhotos()
-                    } else {
-                        print("DEBUG: Auto-save is disabled, skipping auto-save")
                     }
                 case .failure(let error):
                     self.showToast("Export failed: \(error.localizedDescription)")
-                    print("Export error: \(error)")
                 }
             }
         }
@@ -1291,10 +1281,8 @@ struct HomeView: View {
             case .success:
                 self.autoSavedToPhotos = true
                 self.showToast("Auto-saved to Photos successfully!")
-                print("Auto-saved to Photos successfully")
             case .failure(let error):
                 self.showToast("Auto-save failed: \(error.localizedDescription)")
-                print("Auto-save to Photos failed: \(error.localizedDescription)")
             }
         }
     }

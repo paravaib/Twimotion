@@ -16,7 +16,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "245"
             endingLineNumber = "245"
-            landmarkName = "checkSubscriptionStatusWithoutSync()"
+            landmarkName = "manualResetDailyGIFs()"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>

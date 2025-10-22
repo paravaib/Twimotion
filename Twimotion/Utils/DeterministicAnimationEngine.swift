@@ -46,8 +46,6 @@ class DeterministicAnimationEngine {
         // Apply speed multiplier (higher speed = shorter duration)
         let adjustedDuration = totalDuration / speedMultiplier
         
-        print("DEBUG: Duration calculation - wordCount: \(wordCount), totalDuration: \(totalDuration), speedMultiplier: \(speedMultiplier), adjustedDuration: \(adjustedDuration)")
-        
         // Cap the duration at reasonable limits
         let minDuration = 5.0   // Minimum 5 seconds
         let maxDuration = 120.0 // Maximum 2 minutes for free X/Twitter
@@ -200,23 +198,11 @@ class DeterministicAnimationEngine {
         let animationPortion = min(1.0, speedAdjustedPortion) // Cap at 100%
         let wordSpacing = animationPortion / Double(wordCount)
         
-        print("DEBUG: Speed timing - speedMultiplier: \(speedMultiplier), baseAnimationPortion: \(baseAnimationPortion), speedAdjustedPortion: \(speedAdjustedPortion), animationPortion: \(animationPortion), wordSpacing: \(wordSpacing)")
-        
         return (0..<phraseCount).map { index in
             let startTime = Double(index) * wordSpacing
             // Once a word appears, it stays visible for the rest of the animation
             let duration = 1.0 - startTime // Duration until end of animation
             let endTime = 1.0 // All words stay visible until the end
-            
-            // Debug logging for the first few and last few words
-            if index < 5 || index >= phraseCount - 5 {
-                print("DEBUG: Word \(index): startTime=\(String(format: "%.4f", startTime)), duration=\(String(format: "%.4f", duration)), endTime=\(String(format: "%.4f", endTime))")
-            }
-            
-            // Debug logging for words around index 40
-            if index >= 35 && index <= 45 {
-                print("DEBUG: Word \(index): startTime=\(String(format: "%.4f", startTime)), duration=\(String(format: "%.4f", duration)), endTime=\(String(format: "%.4f", endTime))")
-            }
             
             return PhraseTiming(
                 startTime: startTime,
@@ -228,20 +214,11 @@ class DeterministicAnimationEngine {
     
     private static func calculatePhraseTime(globalT: Double, timing: PhraseTiming) -> Double {
         guard globalT >= timing.startTime else { 
-            // Debug logging for words that haven't started yet
-            if timing.startTime > 0.3 && timing.startTime < 0.4 {
-                print("DEBUG: Word with startTime=\(String(format: "%.4f", timing.startTime)) not started yet, globalT=\(String(format: "%.4f", globalT))")
-            }
             return -1.0 // Not started
         }
         
         // Once a word appears, it stays visible (return 1.0 for visible state)
         // Since we've already passed the guard, the word should be visible
-        
-        // Debug logging for words that just became visible
-        if timing.startTime > 0.3 && timing.startTime < 0.4 {
-            print("DEBUG: Word with startTime=\(String(format: "%.4f", timing.startTime)) became visible, globalT=\(String(format: "%.4f", globalT))")
-        }
         
         return 1.0
     }

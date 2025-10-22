@@ -110,16 +110,13 @@ class IAPManager: ObservableObject {
     
     /// Handle app foreground events - check for expired entitlements
     func handleAppForeground() async {
-        print("🔄 App became active - checking entitlement status...")
         
         // Check if entitlement has expired
         if let expiresAt = entitlementExpiresAt, expiresAt < Date() {
-            print("⚠️ Entitlement expired, updating status")
             await queryLocalEntitlements()
         } else if let lastChecked = entitlementLastChecked {
             let hoursSinceLastCheck = Date().timeIntervalSince(lastChecked) / 3600
             if hoursSinceLastCheck > 24 {
-                print("⚠️ Entitlement cache expired, re-checking")
                 await queryLocalEntitlements()
             }
         }
@@ -230,33 +227,27 @@ class IAPManager: ObservableObject {
     
     /// Manually refresh subscription status (only when user requests it)
     func refreshSubscriptionStatus() async {
-        print("🔄 Manually refreshing subscription status...")
         await checkSubscriptionStatus()
     }
     
     /// Reset Pro status for debugging (remove in production)
     @MainActor
     func resetProStatus() {
-        print("🔄 Resetting Pro status for debugging...")
         isProUser = false
         userDefaults.set(false, forKey: Keys.isProUser)
         userDefaults.removeObject(forKey: Keys.proPurchaseDate)
-        print("✅ Pro status reset to false")
     }
     
     /// Manual reset for testing - resets daily GIFs and countdown
     @MainActor
     func manualResetDailyGIFs() {
-        print("🔄 Manual reset: Resetting daily GIFs for testing...")
         dailyGIFsUsed = 0
         lastResetDate = Date()
         saveUserData()
-        print("✅ Manual reset complete - GIFs reset to 0, countdown reset")
     }
     
     /// Force check subscription status (bypasses local cache)
     func forceCheckSubscriptionStatus() async {
-        print("🔄 Force checking subscription status...")
         // Reset local status first
         isProUser = false
         userDefaults.set(false, forKey: Keys.isProUser)
@@ -278,8 +269,6 @@ class IAPManager: ObservableObject {
     
     /// Query local entitlements - Step 1 of safe client-only flow
     private func queryLocalEntitlements() async {
-        print("🔍 Querying local entitlements...")
-        
         await MainActor.run {
             self.isProUser = false
             self.entitlementExpiresAt = nil
@@ -289,7 +278,6 @@ class IAPManager: ObservableObject {
         let isFreshInstall = entitlementLastChecked == nil
         
         if isFreshInstall {
-            print("🆕 Fresh install detected - checking local entitlements only")
             // Don't call AppStore.sync() to avoid Apple Sign In prompt
             // Local entitlements will be checked below
         }
@@ -298,13 +286,10 @@ class IAPManager: ObservableObject {
         for await result in Transaction.currentEntitlements {
             do {
                 let transaction = try checkVerified(result)
-                print("✅ Found local entitlement: \(transaction.productID)")
-                print("✅ Expiration date: \(transaction.expirationDate?.description ?? "none")")
-                
                 // Check if this is a Pro subscription and is active
                 if ProductID.allCases.contains(where: { $0.rawValue == transaction.productID }) {
                     let isCurrentlyActive = transaction.revocationDate == nil && 
-                                           (transaction.expirationDate == nil || transaction.expirationDate! > Date())
+                                           (transaction.expirationDate == nil || (transaction.expirationDate ?? Date.distantFuture) > Date())
                     
                     if isCurrentlyActive {
                         await MainActor.run {
@@ -312,12 +297,10 @@ class IAPManager: ObservableObject {
                             self.entitlementExpiresAt = transaction.expirationDate
                             self.entitlementLastChecked = Date()
                         }
-                        print("✅ Pro subscription is active")
                         break // Found active subscription, no need to check more
                     }
                 }
             } catch {
-                print("❌ Failed to verify entitlement: \(error)")
             }
         }
         
@@ -325,13 +308,11 @@ class IAPManager: ObservableObject {
         saveEntitlementCache()
         
         await MainActor.run {
-            print("✅ Local entitlements queried - Pro: \(self.isProUser)")
         }
     }
     
     /// Restore purchases - Only call when user explicitly requests it (will trigger Apple Sign In)
     func restorePurchases() async {
-        print("🔄 Restoring purchases (this will prompt for Apple Sign In)...")
         isLoading = true
         errorMessage = nil
         
@@ -339,13 +320,11 @@ class IAPManager: ObservableObject {
             // Only call AppStore.sync() when user explicitly requests restore
             // This will trigger Apple Sign In prompt
             try await AppStore.sync()
-            print("✅ App Store sync successful")
             
             // Re-query local entitlements after sync
             await queryLocalEntitlements()
             
         } catch {
-            print("⚠️ Restore purchases failed: \(error)")
             await MainActor.run {
                 self.errorMessage = "Failed to restore purchases: \(error.localizedDescription)"
             }
@@ -356,7 +335,6 @@ class IAPManager: ObservableObject {
     
     /// Force restore purchases (for testing/debugging - will trigger Apple Sign In)
     func forceRestorePurchases() async {
-        print("🔄 Force restoring purchases (this will prompt for Apple Sign In)...")
         isLoading = true
         errorMessage = nil
         
@@ -372,13 +350,10 @@ class IAPManager: ObservableObject {
         do {
             // Force sync with App Store (will trigger Apple Sign In)
             try await AppStore.sync()
-            print("✅ Force App Store sync successful")
-            
             // Re-query local entitlements after sync
             await queryLocalEntitlements()
             
         } catch {
-            print("⚠️ Force restore purchases failed: \(error)")
             await MainActor.run {
                 self.errorMessage = "Failed to restore purchases: \(error.localizedDescription)"
             }
@@ -396,10 +371,8 @@ class IAPManager: ObservableObject {
         
         if let savedDate = userDefaults.object(forKey: Keys.lastResetDate) as? Date {
             lastResetDate = savedDate
-            print("📅 Loaded saved lastResetDate: \(lastResetDate)")
         } else {
             lastResetDate = Date()
-            print("📅 Initialized lastResetDate to current date: \(lastResetDate)")
         }
     }
     
@@ -413,7 +386,6 @@ class IAPManager: ObservableObject {
         let isFreshInstall = entitlementLastChecked == nil && entitlementExpiresAt == nil
         
         if isFreshInstall {
-            print("🆕 Fresh install detected - will sync with App Store on first launch")
             return
         }
         
@@ -421,12 +393,10 @@ class IAPManager: ObservableObject {
         if let lastChecked = entitlementLastChecked {
             let hoursSinceLastCheck = Date().timeIntervalSince(lastChecked) / 3600
             if hoursSinceLastCheck < 24 && isProUser {
-                print("✅ Using cached entitlement (checked \(String(format: "%.1f", hoursSinceLastCheck)) hours ago)")
                 return
             }
         }
         
-        print("ℹ️ Cached entitlement expired or not found, will query fresh entitlements")
     }
     
     /// Save entitlement cache - Step 4 of safe client-only flow
@@ -434,7 +404,6 @@ class IAPManager: ObservableObject {
         userDefaults.set(isProUser, forKey: Keys.isProUser)
         userDefaults.set(entitlementExpiresAt, forKey: Keys.entitlementExpiresAt)
         userDefaults.set(entitlementLastChecked, forKey: Keys.entitlementLastChecked)
-        print("💾 Entitlement cache saved")
     }
     
     private func saveUserData() {
@@ -450,14 +419,9 @@ class IAPManager: ObservableObject {
         
         // Check if 24 hours have passed since last reset
         if timeInterval >= hoursInDay {
-            print("🔄 24 hours have passed, resetting daily GIFs")
             dailyGIFsUsed = 0
             lastResetDate = now
             saveUserData()
-            print("✅ Daily GIFs reset to 0, lastResetDate updated to: \(lastResetDate)")
-        } else {
-            let remainingHours = (hoursInDay - timeInterval) / 3600
-            print("⏰ \(String(format: "%.1f", remainingHours)) hours remaining until next reset")
         }
     }
     
@@ -470,9 +434,7 @@ class IAPManager: ObservableObject {
         do {
             let productIDs = ProductID.allCases.map { $0.rawValue }
             products = try await Product.products(for: productIDs)
-            print("✅ Loaded \(products.count) products")
         } catch {
-            print("⚠️ Failed to load products (normal in simulator): \(error)")
             // Don't show error to user - this is expected in simulator
             // The app will still work with local Pro status
         }
@@ -515,26 +477,19 @@ class IAPManager: ObservableObject {
             guard let self = self else { return }
             
             do {
-                print("👂 Starting transaction listener...")
                 for await result in Transaction.updates {
                     do {
                         let transaction = try self.checkVerified(result)
-                        print("🔄 Live transaction update: \(transaction.productID)")
-                        print("🔄 Revocation date: \(transaction.revocationDate?.description ?? "none")")
-                        print("🔄 Expiration date: \(transaction.expirationDate?.description ?? "none")")
                         
                         // Update entitlement state for live updates
                         await self.updateEntitlementFromTransaction(transaction)
                         
                         // Finish transaction if required
                         await transaction.finish()
-                        print("✅ Live transaction processed and finished")
                     } catch {
-                        print("❌ Live transaction verification failed: \(error)")
                     }
                 }
             } catch {
-                print("❌ Transaction listener failed: \(error)")
                 self.isListening = false
             }
         }
@@ -551,15 +506,13 @@ class IAPManager: ObservableObject {
     
     /// Update entitlement state from transaction - used for live updates
     private func updateEntitlementFromTransaction(_ transaction: Transaction) async {
-        print("🔄 Updating entitlement from transaction: \(transaction.productID)")
-        
         // Check if this is a Pro subscription
         let productID = transaction.productID
         if ProductID.allCases.contains(where: { $0.rawValue == productID }) {
             
             // Check if subscription is currently active
             let isCurrentlyActive = transaction.revocationDate == nil && 
-                                   (transaction.expirationDate == nil || transaction.expirationDate! > Date())
+                                   (transaction.expirationDate == nil || (transaction.expirationDate ?? Date.distantFuture) > Date())
             
             await MainActor.run {
                 if isCurrentlyActive {
@@ -567,13 +520,11 @@ class IAPManager: ObservableObject {
                     self.isProUser = true
                     self.entitlementExpiresAt = transaction.expirationDate
                     self.entitlementLastChecked = Date()
-                    print("✅ Pro subscription activated via live update")
                 } else {
                     // Subscription is not active (expired or revoked)
                     self.isProUser = false
                     self.entitlementExpiresAt = nil
                     self.entitlementLastChecked = Date()
-                    print("❌ Pro subscription deactivated via live update")
                 }
                 
                 // Save updated entitlement cache
@@ -588,8 +539,6 @@ class IAPManager: ObservableObject {
     }
     
     private func checkForExistingPurchases() async {
-        print("🔍 Checking for existing purchases...")
-        
         // First, reset to non-pro status on MainActor
         await MainActor.run {
             self.isProUser = false
@@ -600,13 +549,8 @@ class IAPManager: ObservableObject {
         for await result in Transaction.currentEntitlements {
             do {
                 let transaction = try checkVerified(result)
-                print("✅ Found existing entitlement: \(transaction.productID)")
-                print("✅ Revocation date: \(transaction.revocationDate?.description ?? "none")")
-                print("✅ Expiration date: \(transaction.expirationDate?.description ?? "none")")
-                
                 await updateProStatus(transaction)
             } catch {
-                print("❌ Failed to verify existing entitlement: \(error)")
             }
         }
         
@@ -614,43 +558,32 @@ class IAPManager: ObservableObject {
         for await result in Transaction.unfinished {
             do {
                 let transaction = try checkVerified(result)
-                print("✅ Found unfinished transaction: \(transaction.productID)")
                 await updateProStatus(transaction)
                 await transaction.finish()
             } catch {
-                print("❌ Failed to verify unfinished transaction: \(error)")
             }
         }
         
         await MainActor.run {
-            print("🔍 Final Pro status after checking purchases: \(self.isProUser)")
         }
     }
     
     /// Check current subscription status with AppStore.sync (only call when user explicitly requests it)
     private func checkSubscriptionStatus() async {
-        print("🔄 Starting subscription status check with sync...")
         isLoading = true
         
         do {
             // Only sync when explicitly requested (e.g., restore purchases button)
-            print("🔄 Syncing with App Store...")
             try await AppStore.sync()
-            print("✅ App Store sync successful")
             
             // Check for existing entitlements
             await checkForExistingPurchases()
             
-            print("✅ Subscription status checked with sync - Pro: \(isProUser)")
         } catch {
-            print("⚠️ StoreKit sync failed: \(error)")
-            print("⚠️ Error details: \(error.localizedDescription)")
-            
             // Check if this is a sandbox/authentication error
             if error.localizedDescription.contains("authentication") || 
                error.localizedDescription.contains("sandbox") ||
                error.localizedDescription.contains("sign in") {
-                print("ℹ️ Apple ID authentication required for subscription check")
                 // Keep local status - don't change anything
                 await checkLocalSubscriptionStatus()
             } else {
@@ -667,11 +600,6 @@ class IAPManager: ObservableObject {
     /// Check local subscription status when StoreKit sync fails
     private func checkLocalSubscriptionStatus() async {
         // Keep existing local status - don't change anything
-        if isProUser {
-            print("✅ Local Pro status maintained")
-        } else {
-            print("ℹ️ Free user status maintained")
-        }
     }
 }
 

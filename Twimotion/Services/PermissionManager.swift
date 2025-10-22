@@ -54,7 +54,6 @@ class PermissionManager: ObservableObject {
         // Only update if status changed to trigger UI refresh
         if newStatus != photoLibraryPermissionStatus {
             photoLibraryPermissionStatus = newStatus
-            print("📸 Photo library permission status updated: \(newStatus)")
         }
     }
     

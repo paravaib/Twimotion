@@ -43,7 +43,6 @@ struct WebView: UIViewRepresentable {
     private func loadHTMLFile(webView: WKWebView) {
         guard let htmlPath = Bundle.main.path(forResource: htmlFileName, ofType: "html"),
               let htmlString = try? String(contentsOfFile: htmlPath) else {
-            print("❌ Could not load HTML file: \(htmlFileName).html")
             return
         }
         

@@ -228,9 +228,6 @@ struct ExportView: View {
     // MARK: - Helper Methods
     
     private func startExport() {
-        print("Starting GIF export...")
-        print("Export config: \(exportConfig.phrases.count) phrases, \(exportConfig.duration)s duration, \(exportConfig.size)")
-        
         // Reset file size
         exportedFileSize = ""
         
@@ -238,7 +235,6 @@ struct ExportView: View {
             DispatchQueue.main.async {
                 switch result {
                 case .success(let url):
-                    print("GIF export successful: \(url.path)")
                     self.exportedGIFURL = url
                     self.exportCompleted = true
                     
@@ -250,8 +246,6 @@ struct ExportView: View {
                         self.autoSaveToPhotos()
                     }
                 case .failure(let error):
-                    print("GIF export failed: \(error.localizedDescription)")
-                    print("Error details: \(error)")
                     
                     // Show error alert or toast
                     self.showExportError(error.localizedDescription)
@@ -267,7 +261,6 @@ struct ExportView: View {
                 exportedFileSize = formatFileSize(fileSize)
             }
         } catch {
-            print("Error calculating file size: \(error)")
             exportedFileSize = "Unknown"
         }
     }
@@ -281,7 +274,6 @@ struct ExportView: View {
     
     private func showExportError(_ message: String) {
         // You can implement an alert or toast here
-        print("Export Error: \(message)")
     }
     
     
@@ -311,7 +303,6 @@ struct ExportView: View {
                 dismiss()
             case .failure(let error):
                 // Handle error
-                print("Save to Photos failed: \(error.localizedDescription)")
             }
         }
     }
@@ -321,7 +312,6 @@ struct ExportView: View {
         
         // Only auto-save if permission is granted
         guard permissionManager.hasPhotoLibraryPermission else {
-            print("Auto-save skipped: Photo library permission not granted")
             return
         }
         
@@ -329,9 +319,7 @@ struct ExportView: View {
             switch result {
             case .success:
                 self.autoSavedToPhotos = true
-                print("Auto-saved to Photos successfully")
             case .failure(let error):
-                print("Auto-save to Photos failed: \(error.localizedDescription)")
             }
         }
     }

@@ -103,8 +103,6 @@ class GIFExporter: ObservableObject {
     // MARK: - Private GIF Export Implementation
     
     private func performGIFExport(config: GIFExporter.ExportConfiguration, completion: @escaping (Result<URL, Error>) -> Void) {
-        print("GIFExporter: Starting GIF export process")
-        
         DispatchQueue.main.async {
             self.isExporting = true
             self.exportProgress = 0.0
@@ -137,14 +135,10 @@ class GIFExporter: ObservableObject {
     }
     
     private func generateGIFFrames(config: GIFExporter.ExportConfiguration, outputURL: URL) throws {
-        print("GIFExporter: Generating GIF frames")
-        
         // Optimize frame rate for long text
         let optimizedFPS = optimizeFPSForTextLength(config.phrases.count, baseFPS: config.fps)
         let frameCount = Int(config.duration * Double(optimizedFPS))
         let frameInterval = 1.0 / Double(optimizedFPS)
-        
-        print("GIFExporter: Optimized FPS: \(optimizedFPS), Frame count: \(frameCount)")
         
         // Create GIF directly without storing all images in memory
         try createGIFDirectly(config: config, outputURL: outputURL, frameCount: frameCount, frameInterval: frameInterval)
@@ -165,8 +159,6 @@ class GIFExporter: ObservableObject {
     
     /// Create GIF directly without storing all frames in memory
     private func createGIFDirectly(config: GIFExporter.ExportConfiguration, outputURL: URL, frameCount: Int, frameInterval: Double) throws {
-        print("GIFExporter: Creating GIF directly with \(frameCount) frames")
-        
         // Initialize progress tracking
         DispatchQueue.main.async {
             self.totalFrames = frameCount
@@ -238,10 +230,6 @@ class GIFExporter: ObservableObject {
                 }
             }
             
-            // Log progress for long exports
-            if frameCount > 100 && frameIndex % 50 == 0 {
-                print("GIFExporter: Progress: \(Int(progress * 100))% (\(frameIndex + 1)/\(frameCount) frames)")
-            }
         }
         
         // Finalize the GIF
@@ -249,7 +237,6 @@ class GIFExporter: ObservableObject {
             throw GIFExportError.unknownError
         }
         
-        print("GIFExporter: GIF created successfully at \(outputURL)")
     }
     
     private func pixelBufferToUIImage(_ pixelBuffer: CVPixelBuffer) throws -> UIImage {
@@ -345,9 +332,6 @@ class GIFExporter: ObservableObject {
         // Force layout and prepare for rendering
         hostingController.view.setNeedsLayout()
         hostingController.view.layoutIfNeeded()
-        
-        // Ensure we're on the main thread for UI operations
-        assert(Thread.isMainThread, "UI operations must be on main thread")
         
         // Create image renderer
         let renderer = UIGraphicsImageRenderer(size: size)

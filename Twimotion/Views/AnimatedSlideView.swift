@@ -253,11 +253,6 @@ struct AnimatedSlideView: View {
         
         let result = visibleWords.joined(separator: " ")
         
-        // Debug logging
-        if wordsVisibleInCurrentCycle % 10 == 0 || wordsVisibleInCurrentCycle == wordsToShowInCycle {
-            let lastFewWords = visibleWords.suffix(3).joined(separator: " ")
-            print("DEBUG: t=\(String(format: "%.3f", t)), cycle=\(currentCycle)/\(totalCycles), words=\(wordsVisibleInCurrentCycle)/\(wordsToShowInCycle), lastWords='\(lastFewWords)'")
-        }
         
         return result
     }
@@ -378,7 +373,6 @@ struct PreviewView: View {
         }
         .onChange(of: duration) { oldDuration, newDuration in
             // Restart animation when duration changes
-            print("DEBUG: PreviewView duration changed from \(oldDuration) to \(newDuration)")
             animationKey = UUID() // Force view refresh
             if isPlaying {
                 pauseAnimation()
@@ -478,7 +472,6 @@ struct PreviewView: View {
         
         isPlaying = true
         let frameIncrement = 1.0/60.0 / duration
-        print("DEBUG: Starting animation with duration: \(duration), frameIncrement: \(frameIncrement)")
         
         timer = Timer.scheduledTimer(withTimeInterval: 1.0/60.0, repeats: true) { timer in
             DispatchQueue.main.async {
@@ -487,17 +480,10 @@ struct PreviewView: View {
                     return
                 }
                 
-                let oldTime = currentTime
                 currentTime += frameIncrement
-                
-                // Debug logging for time progression - show every significant change
-                if currentTime - oldTime > 0.0001 {
-                    print("DEBUG: Time progressed from \(String(format: "%.6f", oldTime)) to \(String(format: "%.6f", currentTime))")
-                }
                 
                 if currentTime >= 1.0 {
                     currentTime = 1.0
-                    print("DEBUG: Animation completed at t=1.0")
                     pauseAnimation()
                 }
             }
@@ -505,7 +491,6 @@ struct PreviewView: View {
     }
     
     private func pauseAnimation() {
-        print("DEBUG: Pausing animation at currentTime: \(String(format: "%.6f", currentTime))")
         isPlaying = false
         timer?.invalidate()
         timer = nil
@@ -516,7 +501,6 @@ struct PreviewView: View {
     }
     
     private func resetAnimation() {
-        print("DEBUG: Resetting animation")
         pauseAnimation()
         currentTime = 0.0
     }

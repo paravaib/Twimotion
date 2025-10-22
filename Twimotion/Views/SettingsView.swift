@@ -136,7 +136,6 @@ struct SettingsView: View {
                             }
                             .disabled(iapManager.isLoading)
                             
-                            // Debug buttons (remove in production)
                             #if DEBUG
                             Button(action: {
                                 Task {
@@ -243,7 +242,6 @@ struct SettingsView: View {
                     }
                     .buttonStyle(PlainButtonStyle())
                     
-                    // Debug button for free users (remove in production)
                     #if DEBUG
                     HStack {
                         Spacer()

@@ -44,7 +44,6 @@ class ThemeManager: ObservableObject {
             saveCustomColors()
         }
         
-        print("DEBUG: ThemeManager initialized with theme: \(selectedTheme.name)")
     }
     
     // MARK: - Theme Selection
@@ -59,7 +58,6 @@ class ThemeManager: ObservableObject {
         customTextColor = theme.colorScheme.primaryColor
         saveCustomColors()
         
-        print("DEBUG: Theme selected - \(theme.name), Background: \(customBackgroundColor.toHex()), Text: \(customTextColor.toHex())")
     }
     
     /// Create a custom theme from current custom colors
