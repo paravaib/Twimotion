@@ -323,7 +323,8 @@ class MP4Exporter: ObservableObject {
             buffer: buffer,
             config: config,
             phraseAnimations: phraseAnimations,
-            size: size
+            size: size,
+            t: t
         )
         
         return buffer
@@ -335,7 +336,8 @@ class MP4Exporter: ObservableObject {
         buffer: CVPixelBuffer,
         config: MP4ExportConfiguration,
         phraseAnimations: [DeterministicAnimationEngine.PhraseAnimation],
-        size: CGSize
+        size: CGSize,
+        t: Double
     ) throws {
         
         CVPixelBufferLockBaseAddress(buffer, [])
@@ -367,7 +369,8 @@ class MP4Exporter: ObservableObject {
             phrases: config.phrases,
             phraseAnimations: phraseAnimations,
             preset: config.preset,
-            size: size
+            size: size,
+            t: t
         )
         
         
@@ -384,7 +387,8 @@ class MP4Exporter: ObservableObject {
         phrases: [String],
         phraseAnimations: [DeterministicAnimationEngine.PhraseAnimation],
         preset: AnimationPreset,
-        size: CGSize
+        size: CGSize,
+        t: Double
     ) {
         let fontSize = calculateOptimalFontSize(for: size)
         let textColor = preset.customSettings.textColor ?? preset.template.tokens.primaryColor
@@ -401,9 +405,15 @@ class MP4Exporter: ObservableObject {
         
         print("MP4Exporter: Rendering \(visiblePhrases.count) visible phrases with fontSize: \(fontSize)")
         
-        // Calculate vertical positioning (centered like preview)
+        // Calculate vertical positioning (bottom-aligned for teleprompter effect)
         let totalHeight = CGFloat(visiblePhrases.count) * fontSize * 1.2
-        let startY = (size.height - totalHeight) / 2
+        let bottomPadding = size.height * 0.1 // 10% from bottom
+        let baseStartY = size.height - totalHeight - bottomPadding
+        
+        // Add teleprompter scrolling effect (subtle upward movement)
+        let maxOffset = size.height * 0.05 // Maximum 5% of screen height
+        let teleprompterOffset = -maxOffset * t // Negative offset moves text upward
+        let startY = baseStartY + teleprompterOffset
         
         for (phraseIndex, phraseData) in visiblePhrases.enumerated() {
             let phraseAnimation = phraseData.animation

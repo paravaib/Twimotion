@@ -68,12 +68,12 @@ struct AnimatedSlideView: View {
             VStack {
                 Spacer()
                 
-                // Display text with animation effects
+                // Display text with animation effects - positioned at bottom for teleprompter effect
                 paragraphView(geometry: geometry)
                     .frame(maxWidth: .infinity)
                     .padding(.horizontal, geometry.size.width * 0.08)
-                
-                Spacer()
+                    .padding(.bottom, geometry.size.height * 0.1) // Add bottom padding for teleprompter effect
+                    .offset(y: calculateTeleprompterOffset(for: geometry.size)) // Add subtle upward scrolling
             }
         }
     }
@@ -128,6 +128,13 @@ struct AnimatedSlideView: View {
         let blinkSpeed = 2.0
         let blinkPhase = sin(t * blinkSpeed * .pi * 2)
         return (blinkPhase + 1) / 2
+    }
+    
+    private func calculateTeleprompterOffset(for size: CGSize) -> CGFloat {
+        // Create a subtle upward scrolling effect as the animation progresses
+        // This simulates the teleprompter text moving up the screen
+        let maxOffset = size.height * 0.05 // Maximum 5% of screen height
+        return -maxOffset * t // Negative offset moves text upward
     }
 }
 

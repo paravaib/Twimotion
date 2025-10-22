@@ -90,10 +90,11 @@ class SharedTextRenderer {
             context: nil
         ).size
         
-        // Calculate text rectangle (centered vertically)
+        // Calculate text rectangle (bottom-aligned for teleprompter effect)
+        let bottomPadding = config.canvasSize.height * 0.1 // 10% from bottom
         let textRect = CGRect(
             x: config.horizontalPadding,
-            y: (config.canvasSize.height - textSize.height) / 2,
+            y: config.canvasSize.height - textSize.height - bottomPadding,
             width: availableWidth,
             height: textSize.height
         )
