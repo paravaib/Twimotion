@@ -166,37 +166,75 @@ struct HomeView: View {
                 LinearGradient(
                     gradient: Gradient(colors: [
                         Color(.systemBackground),
-                        Color(.systemGray6).opacity(0.3)
+                        Color.blue.opacity(0.05),
+                        Color.purple.opacity(0.03)
                     ]),
-                    startPoint: .top,
-                    endPoint: .bottom
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
                 )
             )
             .onTapGesture {
                 // Dismiss keyboard when tapping outside text input
                 UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
             }
-            .navigationTitle("Twimotion")
+            .navigationTitle("")
             .navigationBarTitleDisplayMode(.large)
             .navigationBarItems(
-                trailing: Button(action: {
-                    showingThemeSelection = true
-                }) {
-                    HStack(spacing: 6) {
-                        Circle()
-                            .fill(themeManager.effectiveBackgroundColor)
-                            .frame(width: 16, height: 16)
-                        
-                        Circle()
-                            .fill(themeManager.effectiveTextColor)
-                            .frame(width: 16, height: 16)
+                trailing: HStack(spacing: 12) {
+                    // Upgrade to Pro button for free users
+                    if !iapManager.isProUser {
+                        Button(action: {
+                            showingProUpgrade = true
+                        }) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "crown.fill")
+                                    .font(.caption)
+                                    .foregroundColor(.yellow)
+                                
+                                Text("Pro")
+                                    .font(.caption)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.white)
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(
+                                Capsule()
+                                    .fill(
+                                        LinearGradient(
+                                            gradient: Gradient(colors: [
+                                                Color.orange,
+                                                Color.red
+                                            ]),
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                                    .shadow(color: .orange.opacity(0.3), radius: 4, x: 0, y: 2)
+                            )
+                        }
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color(.systemGray6))
-                    )
+                    
+                    // Theme button
+                    Button(action: {
+                        showingThemeSelection = true
+                    }) {
+                        HStack(spacing: 6) {
+                            Circle()
+                                .fill(themeManager.effectiveBackgroundColor)
+                                .frame(width: 16, height: 16)
+                            
+                            Circle()
+                                .fill(themeManager.effectiveTextColor)
+                                .frame(width: 16, height: 16)
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color(.systemGray6))
+                        )
+                    }
                 }
             )
             .onAppear {
@@ -268,22 +306,62 @@ struct HomeView: View {
         }
     }
     
-    // MARK: - Clean Header
+    // MARK: - Enhanced Header
     
     private var cleanHeader: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 12) {
+            // App title with enhanced styling
             Text("Twimotion")
-                .font(.largeTitle)
-                .fontWeight(.bold)
-                .foregroundColor(.primary)
+                .font(.system(size: 32, weight: .bold, design: .rounded))
+                .foregroundStyle(
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            .primary,
+                            .blue,
+                            .purple,
+                            .pink
+                        ]),
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
             
+            // Enhanced tagline with better typography
             Text("Transform your words into scroll-stopping videos.")
-                .font(.subheadline)
+                .font(.system(size: 16, weight: .medium, design: .default))
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .padding(.horizontal, 8)
+            
+            // Optional status indicator for free users
+            if !iapManager.isProUser {
+                HStack(spacing: 6) {
+                    Image(systemName: "clock")
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                    
+                    Text("Free Plan - \(iapManager.remainingGIFsToday) videos left today")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundColor(.orange)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(
+                    Capsule()
+                        .fill(Color.orange.opacity(0.1))
+                        .overlay(
+                            Capsule()
+                                .stroke(Color.orange.opacity(0.3), lineWidth: 1)
+                        )
+                )
+            }
         }
         .padding(.horizontal, 20)
-        .padding(.top, 8)
+        .padding(.top, 12)
+        .padding(.bottom, 8)
     }
     
     
@@ -318,7 +396,16 @@ struct HomeView: View {
                     .padding(.vertical, 12)
                     .background(
                         RoundedRectangle(cornerRadius: 12)
-                            .fill(Color(.systemGray5))
+                            .fill(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [
+                                        Color(.systemGray5),
+                                        Color.blue.opacity(0.1)
+                                    ]),
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
                     )
                 }
                 .buttonStyle(PlainButtonStyle())
@@ -347,7 +434,16 @@ struct HomeView: View {
                         .padding(.vertical, 12)
                         .background(
                             RoundedRectangle(cornerRadius: 12)
-                                .fill(.red)
+                                .fill(
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [
+                                            .red,
+                                            .red.opacity(0.8)
+                                        ]),
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
                         )
                 }
                 .buttonStyle(PlainButtonStyle())
@@ -384,7 +480,16 @@ struct HomeView: View {
             .padding(.vertical, 12)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.systemGray5))
+                    .fill(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                Color(.systemGray5),
+                                Color.purple.opacity(0.1)
+                            ]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
             )
         }
     }
@@ -433,44 +538,162 @@ struct HomeView: View {
     
     
     
-    // MARK: - Text Input with Enhance Button
+    // MARK: - Enhanced Text Input
     
     private var textInputWithEnhance: some View {
-        ZStack(alignment: .topLeading) {
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color(.systemGray6))
-                .frame(height: 140)
-            
-            VStack(alignment: .leading, spacing: 0) {
-                if inputText.isEmpty {
+        VStack(spacing: 0) {
+            ZStack(alignment: .topLeading) {
+                // Enhanced background with gradient and shadow - dynamic height
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                Color(.systemBackground),
+                                Color(.systemGray6).opacity(0.3)
+                            ]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(minHeight: 160, maxHeight: 300)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20)
+                            .stroke(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [
+                                        Color.blue.opacity(0.3),
+                                        Color.purple.opacity(0.2),
+                                        Color.pink.opacity(0.1)
+                                    ]),
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 1.5
+                            )
+                    )
+                    .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 4)
+                
+                VStack(alignment: .leading, spacing: 0) {
+                    if inputText.isEmpty {
+                        HStack(spacing: 12) {
+                            ZStack {
+                                Circle()
+                                    .fill(
+                                        LinearGradient(
+                                            gradient: Gradient(colors: [
+                                                Color.yellow.opacity(0.8),
+                                                Color.orange.opacity(0.6)
+                                            ]),
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                                    .frame(width: 32, height: 32)
+                                
+                                Text("💡")
+                                    .font(.title3)
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Write your idea...")
+                                    .font(.body)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.primary)
+                                
+                                Text("Transform your thoughts into engaging videos")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            Spacer()
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.top, 20)
+                    }
+                    
+                    TextEditor(text: $inputText)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 16)
+                        .background(Color.clear)
+                        .font(.body)
+                        .scrollContentBackground(.hidden)
+                        .frame(minHeight: 80, maxHeight: 200)
+                        .onChange(of: inputText) {
+                            updateSplitPreview()
+                        }
+                    
+                    // Enhanced bottom section with extended character counter
                     HStack {
-                        Text("💡")
-                            .font(.title3)
-                        Text("Write your idea...")
-                            .font(.body)
-                            .foregroundColor(.secondary)
+                        // Extended character counter with status
+                        HStack(spacing: 6) {
+                            // Character counter
+                            HStack(spacing: 8) {
+                                Circle()
+                                    .fill(characterCountColor)
+                                    .frame(width: 8, height: 8)
+                                
+                                Text("\(characterCount) / \(maxCharacters)")
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(characterCountColor)
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(
+                                Capsule()
+                                    .fill(characterCountColor.opacity(0.1))
+                            )
+                            
+                            // Text status indicator
+                            if !inputText.isEmpty {
+                                HStack(spacing: 6) {
+                                    Image(systemName: isTextTooLong ? "exclamationmark.triangle.fill" : shouldShowWarning ? "exclamationmark.triangle" : "checkmark.circle.fill")
+                                        .font(.caption)
+                                        .foregroundColor(characterCountColor)
+                                    
+                                    Text(textStatusMessage)
+                                        .font(.caption)
+                                        .fontWeight(.medium)
+                                        .foregroundColor(characterCountColor)
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(
+                                    Capsule()
+                                        .fill(characterCountColor.opacity(0.1))
+                                )
+                            }
+                        }
+                        
                         Spacer()
                     }
                     .padding(.horizontal, 20)
-                    .padding(.top, 20)
+                    .padding(.bottom, 20)
                 }
-                
-                TextEditor(text: $inputText)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 16)
-                    .background(Color.clear)
-                    .font(.body)
-                    .onChange(of: inputText) {
-                        updateSplitPreview()
-                    }
-                
-                HStack {
-                    characterCounterView
-                    Spacer()
-                }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 16)
             }
+        }
+    }
+    
+    // Character count color based on usage
+    private var characterCountColor: Color {
+        if isTextTooLong {
+            return .red
+        } else if shouldShowWarning {
+            return .orange
+        } else {
+            return .secondary
+        }
+    }
+    
+    
+    // Text status message
+    private var textStatusMessage: String {
+        if isTextTooLong {
+            return "Too long"
+        } else if shouldShowWarning {
+            return "Getting long"
+        } else {
+            return "Good length"
         }
     }
     
@@ -507,13 +730,15 @@ struct HomeView: View {
                     .fill(
                         LinearGradient(
                             gradient: Gradient(colors: [
+                                .blue,
                                 .purple,
                                 .pink
                             ]),
-                            startPoint: .leading,
-                            endPoint: .trailing
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
                         )
                     )
+                    .shadow(color: .blue.opacity(0.3), radius: 8, x: 0, y: 4)
             )
         }
         .buttonStyle(PlainButtonStyle())
